@@ -27,8 +27,14 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           d=$(dirname "$(command -v python)")
-          cp "$d/python.exe" "$d/python3.exe"
-          python3 -V
+          [ -e "$d/python3.exe" ] || cp "$d/python.exe" "$d/python3.exe"
+          python3 -V; python3 -c "import sys; print(sys.executable)"
+      - name: GNU sed/grep for the bash test suite (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install gnu-sed grep >/dev/null
+          echo "$(brew --prefix)/opt/gnu-sed/libexec/gnubin" >> "$GITHUB_PATH"
+          echo "$(brew --prefix)/opt/grep/libexec/gnubin" >> "$GITHUB_PATH"
       - name: git identity
         run: |
           git config --global user.name ci
