@@ -7,7 +7,7 @@ PY=$(command -v python3 || command -v python)
 W="$(mktemp -d)"; trap 'rm -rf "$W"' EXIT
 if "$PY" -m pip install -q pipx 2>/dev/null; then
   export PIPX_HOME="$W/pipx" PIPX_BIN_DIR="$W/bin"
-  "$PY" -m pipx install --python "$PY" "$SRC"
+  "$PY" -m pipx install --python "$("$PY" -c "import sys; print(sys.executable)")" "$SRC"
   ENG="$W/bin/eng"
 else
   "$PY" -m venv "$W/venv"; "$W/venv/bin/python" -m pip install -q "$SRC"; ENG="$W/venv/bin/eng"

@@ -1,5 +1,10 @@
 # Changelog (eng-process kit)
 
+## 2.3.2 - 2026-10-23
+### Fixed
+- eng-run: absolute plan paths are resolved through symlinks before making them repo-relative (macOS /var -> /private/var).
+- Tests run on real Windows (Git Bash): mixed D:/ paths for native Python, .exe/.cmd fake agents, python on PATH for the `env -i` test; macOS CI uses GNU sed/grep; smoke test passes pipx the real interpreter path.
+
 ## 2.3.1 - 2026-10-23
 ### Added
 - Installable package `eng-process` (pyproject, hatchling; Python >=3.9, stdlib only) with console script `eng`: `init`, `upgrade`, `check`, `status`, `new`, `run`, `version`. Skills, templates, prompts and scripts ship as package data; `eng init` vendors exactly as `bin/eng-init`. Install: `pipx install git+https://github.com/rowama/eng-process` (or `uv tool install`).
