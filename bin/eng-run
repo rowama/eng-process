@@ -63,7 +63,7 @@ def repo_path(repo, p):
     p = str(p)
     if os.path.isabs(p):
         try:
-            p = os.path.relpath(p, repo)
+            p = os.path.relpath(os.path.realpath(p), os.path.realpath(repo))
         except ValueError:   # Windows: different drive
             pass
     return L.posix(p)

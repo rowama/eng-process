@@ -4,6 +4,11 @@ set -u
 KIT="$(cd "$(dirname "$0")/.." && pwd)"; export PATH="$KIT/bin:$PATH"
 export GIT_AUTHOR_NAME=test GIT_AUTHOR_EMAIL=test@example.invalid GIT_COMMITTER_NAME=test GIT_COMMITTER_EMAIL=test@example.invalid
 T="$(mktemp -d /tmp/eng-test.XXXX)"; fails=0
+# Windows (Git Bash): native Python cannot open /d/... MSYS paths, so use mixed D:/... form for
+# KIT/T everywhere; upath() converts back for colon-separated PATH entries.
+WIN=; if command -v cygpath >/dev/null 2>&1; then WIN=1; KIT="$(cygpath -m "$KIT")"; T="$(cygpath -m "$T")"; fi
+upath(){ if [ -n "$WIN" ]; then cygpath -u "$1"; else printf '%s\n' "$1"; fi; }
+PYDIR="$(upath "$(dirname "$(command -v python3)")")"
 LOG="$T/log"; : >"$LOG"
 ok(){ echo "PASS $1" | tee -a "$LOG"; }; bad(){ echo "FAIL $1"; fails=$((fails+1)); }
 expect(){ local want=$1 name=$2; shift 2; "$@" >"$T/out" 2>&1; local got=$?
@@ -62,7 +67,7 @@ expect 0 "doc without id is a clean error" bash -c "cp -r '$G' '$T/noid' && cd '
 expect 0 "eng-init vendors skills + scripts" test -f "$G/.claude/skills/eng-plan/SKILL.md" -a -x "$G/.eng/bin/eng-check" -a -f "$G/.eng/bin/englib.py" -a -f "$G/.eng/VERSION"
 expect 0 "vendored skill keeps name/description frontmatter" bash -c "head -3 '$G/.claude/skills/eng-plan/SKILL.md' | grep -q '^name: eng-plan' && head -3 '$G/.claude/skills/eng-plan/SKILL.md' | grep -q '^description: '"
 expect 1 "vendored skills/docs have no kit-source paths" grep -rlE "/workspace|eng-process/bin" "$G/.claude/skills" "$G/.eng/PROCESS.md" "$G/AGENTS.md"
-expect 0 "vendored scripts run with no kit access" bash -c "cp -r '$KIT' '$T/kitsrc' && R='$T/vend' && mkdir \$R && git -C \$R init -q && '$T/kitsrc/bin/eng-init' \$R --agent t >/dev/null && mv '$T/kitsrc' '$T/kitsrc-gone' && cp -r \$R /tmp/eng-vend-\$\$ && cd /tmp/eng-vend-\$\$ && env -i PATH=/usr/bin:/bin HOME=/tmp bash -c 'python3 .eng/bin/eng-check . && .eng/bin/eng-status . >/dev/null && python3 .eng/bin/eng-new plan demo --agent t >/dev/null && python3 .eng/bin/eng-check .'; rc=\$?; rm -rf /tmp/eng-vend-\$\$; exit \$rc"
+expect 0 "vendored scripts run with no kit access" bash -c "cp -r '$KIT' '$T/kitsrc' && R='$T/vend' && mkdir \$R && git -C \$R init -q && '$T/kitsrc/bin/eng-init' \$R --agent t >/dev/null && mv '$T/kitsrc' '$T/kitsrc-gone' && cp -r \$R /tmp/eng-vend-\$\$ && cd /tmp/eng-vend-\$\$ && env -i PATH=/usr/bin:/bin:$PYDIR HOME=/tmp bash -c 'python3 .eng/bin/eng-check . && .eng/bin/eng-status . >/dev/null && python3 .eng/bin/eng-new plan demo --agent t >/dev/null && python3 .eng/bin/eng-check .'; rc=\$?; rm -rf /tmp/eng-vend-\$\$; exit \$rc"
 expect 0 "old vendored version warns" bash -c "cp -r '$G' '$T/old' && echo 1.0.0 > '$T/old/.eng/VERSION' && eng-check '$T/old' | grep -q 'older than kit'"
 expect 0 "eng-init --upgrade refreshes kit files only" bash -c "cd '$T/old' && h=\$(md5sum PROJECT_STATE.md AGENTS.md) && echo junk > .eng/bin/eng-check && rm -r .claude/skills/eng-plan && eng-init . --upgrade >/dev/null && [ \"\$(md5sum PROJECT_STATE.md AGENTS.md)\" = \"\$h\" ] && grep -q '$(cat VERSION)' .eng/VERSION && test -f .claude/skills/eng-plan/SKILL.md && ! eng-check . | grep -q 'older than kit'"
 

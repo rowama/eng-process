@@ -4,8 +4,8 @@ FK="$T/fakebin"; mkdir -p "$FK"; export FAKE_LOG="$T/fake.log"
 cat > "$FK/fake-agent" <<'PY'
 #!/usr/bin/env python3
 # fake claude/codex: logs argv + stdin, prints FAKE_STDOUT, writes FAKE_OUT to the -o file, exits FAKE_RC
-import os, sys
-name = os.path.basename(sys.argv[0]); a = sys.argv[1:]
+import os, re, sys
+name = os.environ.pop("FAKE_NAME", "") or re.sub(r"(?i)\.exe$", "", os.path.basename(sys.argv[0])); a = sys.argv[1:]
 stdin = "" if sys.stdin is None or sys.stdin.isatty() else sys.stdin.read()
 with open(os.environ["FAKE_LOG"], "a") as f:
     f.write("%s ARGV %r\n%s STDIN %d %s\n" % (name, a, name, len(stdin), stdin[:60].replace("\n", " ")))
@@ -20,7 +20,22 @@ if "-o" not in a and "--out" not in a and not os.environ.get("FAKE_STDOUT"):
 sys.exit(int(os.environ.get("FAKE_RC", "0")))
 PY
 chmod +x "$FK/fake-agent"; for n in claude codex mytool tool.cmd; do cp "$FK/fake-agent" "$FK/$n"; done
-export PATH="$FK:$PATH"
+if [ -n "$WIN" ]; then
+  # real Windows: CreateProcess cannot run extensionless scripts. Build .exe launchers (same
+  # mechanism pip uses for console scripts) and a real .cmd batch shim, like npm's claude.cmd.
+  rm -f "$FK/claude" "$FK/codex" "$FK/mytool" "$FK/tool.cmd"
+  python3 - "$FK" <<'PY'
+import os, shutil, sys
+from pip._vendor.distlib.scripts import ScriptMaker
+d = sys.argv[1]; m = ScriptMaker(d, os.path.join(d, "build")); m.executable = sys.executable; m.variants = {""}
+exe = [f for f in m.make("fake-agent") if f.lower().endswith(".exe")][0]
+for n in ("claude", "codex", "mytool"):
+    shutil.copy(exe, os.path.join(d, n + ".exe"))
+with open(os.path.join(d, "tool.cmd"), "w") as f:
+    f.write('@set FAKE_NAME=tool.cmd\r\n@"%s" "%s" %%*\r\n' % (sys.executable, os.path.join(d, "fake-agent")))
+PY
+fi
+export PATH="$(upath "$FK"):$PATH"
 RN="$T/run"; cp -r "$M" "$RN"; PL=$(cd "$RN" && ls thoughts/shared/plans/*.md); SID=$(cd "$RN" && sed -n 's/^id: //p' thoughts/shared/slices/*.md | head -1)
 er(){ (cd "$RN" && python3 .eng/bin/eng-run "$@"); }
 
@@ -32,7 +47,7 @@ expect 0 "eng-init does not vendor template subdirs as files" bash -c "test ! -e
 
 # dry run
 expect 0 "dry-run plan-review prints exact codex command, writes nothing" bash -c "cd '$RN' && out=\$(python3 .eng/bin/eng-run plan-review $PL --dry-run) && echo \"\$out\" | grep -q '^codex exec --sandbox read-only -o thoughts/shared/runs/.*-plan-review-.*last-message.txt ' && ! ls thoughts/shared/runs/*.md 2>/dev/null | grep -q . && [ ! -s '$FAKE_LOG' ]"
-expect 0 "dry-run implement defaults to claude -p (text, acceptEdits)" bash -c "cd '$RN' && python3 .eng/bin/eng-run implement $PL $SID --dry-run | tr '\\n' ' ' | grep -qE \"claude -p 'You are the implementer.*' --output-format text --permission-mode acceptEdits\""
+expect 0 "dry-run implement defaults to claude -p (text, acceptEdits)" bash -c "cd '$RN' && python3 .eng/bin/eng-run implement $PL $SID --dry-run | tr '\\n' ' ' | grep -qE \"claude -p ['\\\"]You are the implementer.*['\\\"] --output-format text --permission-mode acceptEdits\""
 expect 0 "dry-run code-review --base uses codex review --base" bash -c "cd '$RN' && python3 .eng/bin/eng-run code-review --base develop --dry-run --allow-self-review | grep -qx 'codex review --base develop'"
 expect 0 "env ENG_RUNNER_PLAN_REVIEW overrides config" bash -c "cd '$RN' && ENG_RUNNER_PLAN_REVIEW=claude python3 .eng/bin/eng-run plan-review $PL --dry-run | grep -q '^claude -p '"
 expect 0 "runners.toml [roles] overrides default" bash -c "cp -r '$RN' '$T/rc' && cd '$T/rc' && sed -i 's/^plan-review = .*/plan-review = \"claude\"/' .eng/runners.toml && python3 .eng/bin/eng-run plan-review $PL --dry-run | grep -q '^claude -p '"
