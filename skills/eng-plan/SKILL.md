@@ -1,0 +1,39 @@
+---
+name: eng-plan
+description: Write an implementation plan as vertical slices with automated and manual success criteria. Use after research (and architecture for large work) is approved, before any code changes.
+---
+# eng-plan
+
+Session: standard Start/Finish per `.eng/PROCESS.md` section 8 (kit: `PROCESS.md`). Scripts: `.eng/bin/eng-check`, `.eng/bin/eng-status`, `.eng/bin/eng-new`.
+
+## Inputs (files only)
+- Approved design doc, research doc, accepted ADRs, approved architecture (large); .eng/bin/eng-check enforces these
+- `AGENTS.md` (test/lint commands); PROJECT_STATE working agreements
+
+## Outputs
+- `thoughts/shared/plans/<date>-<slug>.md`
+- One slice card per phase: `thoughts/shared/slices/*` (`status: todo`, `plan:`/`plan_phase:` set)
+- Medium/large: the **mandatory** Codex plan review `thoughts/shared/verification/<date>-<slug>-plan-review.md`, linked from the plan's `plan_review:`
+
+## Steps
+1. Be skeptical: verify research claims you rely on against the code.
+2. Propose the phase outline (slice names, order) to Rob before details; get buy-in.
+3. Each phase is a **vertical slice**: thin, end-to-end, demoable; contract/mock first. No horizontal DB -> API -> UI phases.
+4. Program design in Implementation Approach: key types/signatures, call path, file-tree diff.
+5. Each phase: Changes Required, Success Criteria split into **Automated Verification** (exact commands) and **Manual Verification**.
+6. Write each slice card so the implementer (PROJECT_STATE `implementer`, normally Claude Code on Rob's PC) can run it cold from `eng-resume` + `eng-implement-slice`. Mark auth/tenancy/security slices: they always get the cross-model review.
+7. Fill **What We're NOT Doing**. Resolve all open questions.
+8. **Mandatory plan review (medium/large; small exempt)**, after the plan and slice cards are drafted and before asking for CP-C. Rob (or the implementer) runs Codex non-interactively from the repo root on his machine; `.eng/bin/eng-status` prints the command with real paths:
+   `codex exec "review <plan path> and the slice cards <slice glob> against <design doc> (REQ ids), <architecture doc> and <ADR range> for gaps, wrong ordering, missing tests, and security holes; output a numbered list of findings with severity" -o thoughts/shared/verification/<date>-<slug>-plan-review.md`
+   Or: `python3 .eng/bin/eng-run plan-review <plan>` (runner from `.eng/runners.toml`; writes the findings file, a run log, and sets an empty `plan_review:`). Chet/Dave may run it on Rob's PC with his approval; `--dry-run` shows the command.
+9. Codex has written the review file (`-o`; eng-run pre-fills the Findings table as `open`). Add the review-findings front matter and Findings table above the raw output (template `review-findings.md`); one row per finding with severity (critical/high/medium/low) and disposition: `fixed` (say where; update plan/cards), `accepted-risk` (only after Rob approves; record "Rob <date>"), or `rejected` (with a reason). Set `plan_review:` in the plan to that path. No critical/high may stay `open`. Plan approved before reviews were mandatory: run it retroactively before the next slice, or log Rob's waiver row (PROCESS.md 10).
+10. `.eng/bin/eng-check .` must pass (it enforces the plan review once a slice starts).
+
+## Exit criteria
+All required sections; every phase has both criteria types; slice cards exist; no open questions; (M/L) plan review linked with no open critical/high finding.
+
+## Approval stop (Rob)
+**CP-C Plan**: `CP-C: <plan path> - approve plan`. Medium/large: ask only once the plan review is clean. On approval set plan `approved`, log it, set `phase: implement`, `active_slice:` the first slice card. Then the slice is ready: send Rob the "ready to implement" message (`.eng/bin/eng-status` prints it; PROCESS.md section 10).
+
+## Finish
+Standard: end with eng-handoff.

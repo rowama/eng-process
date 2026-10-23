@@ -1,0 +1,271 @@
+#!/usr/bin/env python3
+"""eng-init <repo_dir> [--agent NAME] [--owner NAME] [--triage small|medium|large] [--brownfield] [--force]
+
+Scaffold the eng-process kit into a repo: docs/{design,architecture,vision,decisions},
+thoughts/shared/* (incl. runs/), .eng/{bin,templates,prompts}, .eng/runners.toml
+(created once, project-owned), PROJECT_STATE.md, AGENTS.md, CLAUDE.md, CHANGELOG.md,
+TODOS.md, OWNER-GUIDE.md, docs/definition-of-done.md, thoughts/shared/process-feedback.md and the
+owner's scratch file thoughts/shared/review-notes/<owner>-review-notes.md.
+Existing files are never overwritten unless --force. Idempotent. The closing 'Next:' line
+respects a triage already recorded in PROJECT_STATE.md (or given with --triage).
+--upgrade re-vendors kit files, dedupes the .gitignore block, reports stale sections with a
+short diff, and prints (never runs) `git rm -r --cached` for tracked files now ignored.
+--brownfield lists pre-existing docs and ADRs that need migrating (see PROCESS.md section 11)."""
+import os, re, sys, glob, shutil, argparse
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import englib as L
+
+ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+ap.add_argument("repo_dir")
+ap.add_argument("--agent", default=os.environ.get("ENG_AGENT", "unassigned"))
+ap.add_argument("--owner", default=os.environ.get("ENG_OWNER", "rob"))
+ap.add_argument("--triage", choices=["small", "medium", "large"])
+ap.add_argument("--brownfield", action="store_true", help="report pre-kit docs/ADRs to migrate")
+ap.add_argument("--force", action="store_true", help="overwrite existing kit files")
+ap.add_argument("--upgrade", action="store_true", help="re-vendor kit-owned files only (.eng/bin, .eng/templates, .eng/prompts, .eng/PROCESS.md, .eng/VERSION, .claude/skills/eng-*); never touches project files")
+a = ap.parse_args()
+repo = os.path.abspath(a.repo_dir)
+os.makedirs(repo, exist_ok=True)
+pre_existing = set()
+if a.brownfield:
+    for p in glob.glob(os.path.join(repo, "**", "*.md"), recursive=True):
+        pre_existing.add(L.rel(p, repo))
+for d in L.DIRS:
+    os.makedirs(os.path.join(repo, d), exist_ok=True)
+    if not os.listdir(os.path.join(repo, d)):
+        open(os.path.join(repo, d, ".gitkeep"), "w").close()
+tdir = os.path.join(L.KIT_DIR, "templates")
+eng = os.path.join(repo, ".eng")
+old_tpl = {}
+if os.path.realpath(L.KIT_DIR) == os.path.realpath(eng):
+    print("note: running the repo's vendored copy; kit files left as is (upgrade with a newer kit's eng-init --upgrade)")
+else:
+    # vendor the kit so it travels with the repo: .eng/{bin,templates,PROCESS.md,VERSION}, .claude/skills/eng-*
+    def lf_copy(src, dst):
+        with open(src, "rb") as f:
+            data = f.read().replace(b"\r\n", b"\n")
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        with open(dst, "wb") as f:
+            f.write(data)
+    old_tpl = {}   # previously vendored templates = baseline for boilerplate refresh on --upgrade
+    if os.path.isdir(os.path.join(eng, "templates")):
+        for f in os.listdir(os.path.join(eng, "templates")):
+            with open(os.path.join(eng, "templates", f), encoding="utf-8", errors="replace") as fh:
+                old_tpl[f] = fh.read()
+    for f in sorted(os.listdir(tdir)):
+        if f.startswith("__") or f.endswith((".pyc", ".pyo")) or os.path.isdir(os.path.join(tdir, f)):
+            continue
+        dst = os.path.join(eng, "templates", f)
+        if a.force or a.upgrade or not os.path.exists(dst):
+            lf_copy(os.path.join(tdir, f), dst)
+    bdir = os.path.join(L.KIT_DIR, "bin")
+    for f in sorted(os.listdir(bdir)):
+        if f.startswith("__") or f.endswith((".pyc", ".pyo")) or os.path.isdir(os.path.join(bdir, f)):
+            continue
+        dst = os.path.join(eng, "bin", f)
+        lf_copy(os.path.join(bdir, f), dst)
+        os.chmod(dst, 0o755)
+    pdir = os.path.join(tdir, "prompts")   # versioned eng-run prompt templates (kit-owned)
+    if os.path.isdir(pdir):
+        for f in sorted(os.listdir(pdir)):
+            if f.endswith(".md"):
+                lf_copy(os.path.join(pdir, f), os.path.join(eng, "prompts", f))
+    rt = os.path.join(eng, "runners.toml")   # project-owned config: created once, never overwritten
+    if not os.path.exists(rt) and os.path.isfile(os.path.join(tdir, "runners.toml")):
+        lf_copy(os.path.join(tdir, "runners.toml"), rt)
+        print("create  .eng/runners.toml")
+    sdir = os.path.join(L.KIT_DIR, "skills")
+    for n in sorted(os.listdir(sdir)):
+        src = os.path.join(sdir, n, "SKILL.md")
+        if os.path.isfile(src):
+            lf_copy(src, os.path.join(repo, ".claude", "skills", n, "SKILL.md"))
+    with open(os.path.join(L.KIT_DIR, "PROCESS.md"), encoding="utf-8") as f:
+        proc = f.read()
+    with open(os.path.join(eng, "PROCESS.md"), "w", encoding="utf-8", newline="\n") as f:
+        f.write("<!-- Copy of eng-process kit v%s PROCESS.md, vendored by eng-init. Do not edit here. -->\n%s" % (L.KIT_VERSION, proc))
+    open(os.path.join(eng, "VERSION"), "w", newline="\n").write(L.KIT_VERSION + "\n")
+    print("vendor  .eng/bin, .eng/templates, .eng/prompts, .eng/PROCESS.md, .eng/VERSION (v%s), .claude/skills/eng-*" % L.KIT_VERSION)
+
+GITIGNORE_LINES = ["__pycache__/", "*.pyc", "*.pyo", ".venv/", "venv/", ".env", ".DS_Store", "Thumbs.db"]
+G_START, G_END = "# >>> eng-process defaults (managed by eng-init; edit outside this block)", "# <<< eng-process defaults"
+gi = os.path.join(repo, ".gitignore")
+gtxt = open(gi, encoding="utf-8", errors="replace").read() if os.path.isfile(gi) else ""
+outside = re.sub(r"# >>> eng-process defaults.*?# <<< eng-process defaults\n?", "", gtxt, flags=re.S)
+have = {l.strip().rstrip("/") for l in outside.splitlines() if l.strip() and not l.strip().startswith("#")}
+missing = [l for l in GITIGNORE_LINES if l.rstrip("/") not in have]   # only lines not already ignored elsewhere
+block = (G_START + "\n" + "".join(l + "\n" for l in missing) + G_END + "\n") if missing else ""
+if "# >>> eng-process defaults" in gtxt:
+    _pat_b = r"# >>> eng-process defaults.*?# <<< eng-process defaults\n?"
+    gnew = re.sub(_pat_b, "\0ENGBLOCK\0", gtxt, count=1, flags=re.S)
+    gnew = re.sub(_pat_b, "", gnew, flags=re.S).replace("\0ENGBLOCK\0", block)   # also drops duplicate blocks
+    if not block:
+        gnew = re.sub(r"\n{3,}", "\n\n", gnew)
+elif block:
+    gnew = gtxt + ("" if not gtxt or gtxt.endswith("\n") else "\n") + ("\n" if gtxt else "") + block
+else:
+    gnew = gtxt
+if gnew != gtxt:
+    open(gi, "w", encoding="utf-8", newline="\n").write(gnew)
+    print("update  .gitignore (eng-process defaults block: %s)" % (", ".join(missing) if missing else "all defaults already present; block removed"))
+
+
+def tracked_ignored(repo):
+    """Files already tracked by git that the current ignore rules match (they stay tracked until removed)."""
+    if not os.path.isdir(os.path.join(repo, ".git")) and L.git(repo, "rev-parse", "--git-dir") == "none":
+        return []
+    out = L.git(repo, "ls-files", "-ci", "--exclude-standard")
+    return [] if out == "none" else [L.posix(x) for x in out.splitlines() if x.strip()]
+
+def _sections(text):
+    """[(heading or '', text)] split on '## ' headings, body only (front matter kept out)."""
+    parts = re.split(r"(?m)^(?=## )", text)
+    return [((p.splitlines() or [""])[0] if p.startswith("## ") else "", p) for p in parts]
+
+
+def _pat(tpl):
+    """Regex matching a template section filled with any placeholder values."""
+    parts = re.split(r"\{\{[A-Z_]+\}\}", tpl)
+    return re.compile("^" + ".*?".join(re.escape(x) for x in parts) + "$", re.S)
+
+
+def _short_diff(cur, new, limit=12):
+    """Indented unified diff (yours -> kit), at most `limit` changed lines."""
+    import difflib
+    d = [l for l in difflib.unified_diff(cur.splitlines(), new.splitlines(), "yours", "kit", n=0, lineterm="")
+         if not l.startswith(("---", "+++", "@@"))]
+    more = len(d) - limit
+    d = ["      " + l[:110] for l in d[:limit]] + (["      ... %d more line(s)" % more] if more > 0 else [])
+    return "\n".join(d) if d else "      (whitespace only)"
+
+
+def _split_fm(t):
+    if t.startswith("---\n"):
+        e = t.find("\n---", 4)
+        if e >= 0:
+            e = t.find("\n", e + 4) + 1 or len(t)
+            return t[:e], t[e:]
+    return "", t
+
+
+date = L.now().strftime("%Y-%m-%d")
+owner = re.sub(r"[^a-z0-9-]+", "-", a.owner.lower()).strip("-") or "owner"
+files = {"PROJECT_STATE.md": "PROJECT_STATE.md", "AGENTS.md": "AGENTS.md", "CLAUDE.md": "CLAUDE.md",
+         "CHANGELOG.md": "CHANGELOG.md", "TODOS.md": "TODOS.md", "OWNER-GUIDE.md": "OWNER-GUIDE.md",
+         "docs/definition-of-done.md": "definition-of-done.md",
+         "thoughts/shared/process-feedback.md": "process-feedback.md",
+         "thoughts/shared/review-notes/%s-review-notes.md" % owner: "review-notes.md"}
+if a.upgrade:
+    _sfm = (L.read_front_matter(os.path.join(repo, "PROJECT_STATE.md"))[0] or {}) if os.path.isfile(os.path.join(repo, "PROJECT_STATE.md")) else {}
+    triage, phase = _sfm.get("triage", "unset"), _sfm.get("phase", "discover")
+    # refresh unchanged kit boilerplate in project files; list sections the owner changed (never overwrite them)
+    stale = []
+    _ctx = dict(date=date, agent=a.agent, phase=phase, owner=owner, triage=triage)
+    for dst, src in files.items():
+        p = os.path.join(repo, dst)
+        if not os.path.isfile(p) or src not in old_tpl:
+            continue
+        new_t = open(os.path.join(tdir, src), encoding="utf-8").read()
+        if old_tpl[src] == new_t:
+            continue
+        cur = open(p, encoding="utf-8", errors="replace").read()
+        cfm, cbody = _split_fm(cur)
+        _, obody = _split_fm(old_tpl[src]); _, nbody = _split_fm(new_t)
+        osec, nsec = dict(_sections(obody)), dict(_sections(nbody))
+        out, changed = [], False
+        for h, txt in _sections(cbody):
+            o, n = osec.get(h), nsec.get(h)
+            if o is not None and n is not None and o != n:
+                if _pat(o).match(txt):
+                    out.append(L.fill(n, **_ctx)); changed = True; continue
+                label = h or "(top, before the first '## ' heading: %s)" % (next((l for l in txt.splitlines() if l.strip()), "empty")[:60])
+                stale.append("%s: section '%s'\n%s" % (dst, label, _short_diff(txt, L.fill(n, **_ctx))))
+            out.append(txt)
+        for h in nsec:
+            if h and h not in osec and h not in dict(_sections(cbody)):
+                stale.append("%s: new kit section '%s' missing (add by hand from .eng/templates/%s)" % (dst, h, src))
+        if changed:
+            open(p, "w", encoding="utf-8", newline="\n").write(cfm + "".join(out))
+            print("refresh %s (unchanged kit boilerplate only)" % dst)
+    # plans lacking plan_review: get an empty field (front matter only)
+    for pth in sorted(glob.glob(os.path.join(repo, "thoughts/shared/plans/*.md"))):
+        t = open(pth, encoding="utf-8", errors="replace").read()
+        pfm, _ = L.read_front_matter(pth)
+        if pfm is not None and "plan_review" not in pfm:
+            e = t.find("\n---", 4)
+            open(pth, "w", encoding="utf-8", newline="\n").write(t[:e] + "\nplan_review:" + t[e:])
+            print("add     plan_review: to " + L.rel(pth, repo))
+    ti = tracked_ignored(repo)
+    if ti:
+        print("\nTracked files now matched by .gitignore (still in git). Review, then run yourself (not run by eng-init):")
+        print("  git rm -r --cached -- " + " ".join(('"%s"' % f) if " " in f else f for f in ti))
+    if stale:
+        print("\nStale sections to update by hand (owner-edited; not overwritten). Compare with .eng/templates/:")
+        for s_ in stale:
+            print("  - " + s_)
+    print("Upgraded kit files to v%s in %s. Project files untouched; run .eng/bin/eng-check ." % (L.KIT_VERSION, repo))
+    sys.exit(0)
+
+sp = os.path.join(repo, "PROJECT_STATE.md")
+for dst, src in files.items():
+    p = os.path.join(repo, dst)
+    if os.path.exists(p) and not a.force:
+        print("keep    " + dst)
+        continue
+    with open(os.path.join(tdir, src), encoding="utf-8") as f:
+        txt = L.fill(f.read(), date=date, agent=a.agent, phase="discover", owner=owner,
+                     triage=a.triage or "unset")
+    with open(p, "w", encoding="utf-8", newline="\n") as f:   # UTF-8, no BOM, LF
+        f.write(txt)
+    print("create  " + dst)
+
+fm = (L.read_front_matter(sp)[0] or {}) if os.path.exists(sp) else {}
+triage, phase = fm.get("triage", "unset"), fm.get("phase", "discover")
+if a.triage and triage == "unset":
+    txt = open(sp, encoding="utf-8").read()
+    open(sp, "w", encoding="utf-8", newline="\n").write(re.sub(r"(?m)^triage: .*$", "triage: " + a.triage, txt, count=1))
+    triage = a.triage
+NEXT = {"discover": "eng-discover", "scope": "eng-scope-review", "research": "eng-research",
+        "architecture": "eng-architecture-review", "plan": "eng-plan", "implement": "eng-implement-slice",
+        "verify": "eng-verify", "ship": "eng-ship", "reflect": "eng-retro"}
+if triage in ("unset", "", None):
+    nxt = "run eng-triage"
+else:
+    nxt = "triage is already '%s'; run eng-triage's readiness check, then %s" % (triage, NEXT.get(phase, "eng-resume"))
+print("\nInitialized eng-process v%s in %s. Next: fill AGENTS.md Commands and the PROJECT_STATE "
+      "working agreements, then %s." % (L.KIT_VERSION, repo, nxt))
+
+def suggest(p):
+    """Heuristic destination for a pre-existing doc (confirm each)."""
+    lp, b = p.lower(), os.path.basename(p).lower()
+    rules = [
+        (re.match(r"^(adr[-_]?)?\d{1,4}[-_]", b) or "/adr" in lp or "decision" in lp,
+         "docs/decisions/NNNN-slug.md (type adr, 4-digit number, id ADR-NNNN)"),
+        (b in ("readme.md", "license.md", "contributing.md", "changelog.md", "code_of_conduct.md", "security.md"),
+         "keep in place (not a process artifact)"),
+        ("handoff" in lp, "thoughts/shared/handoffs/ (type handoff) or archive"),
+        ("retro" in lp or "postmortem" in lp, "thoughts/shared/retros/ (type retro)"),
+        ("feedback" in lp or "friction" in lp, "thoughts/shared/process-feedback.md (merge)"),
+        ("vision" in lp, "docs/vision.md (type vision)"),
+        ("brief" in lp or "prd" in b or "requirement" in lp, "docs/design/<date>-<slug>.md (type design) or project brief"),
+        ("market" in lp or "competit" in lp, "thoughts/shared/research/ (type market-research)"),
+        ("architect" in lp or "system" in b, "docs/architecture/<date>-<slug>.md (type architecture)"),
+        ("design" in lp or "spec" in lp or "rfc" in lp, "docs/design/<date>-<slug>.md (type design)"),
+        ("research" in lp or "investigat" in lp or "spike" in lp, "thoughts/shared/research/<date>-<slug>.md (type research)"),
+        ("plan" in lp or "roadmap" in lp or "milestone" in lp, "thoughts/shared/plans/<date>-<slug>.md (type plan)"),
+        ("todo" in lp or "task" in lp or "slice" in lp or "backlog" in lp, "thoughts/shared/slices/ (type slice) or PROJECT_STATE"),
+        ("review" in lp or "audit" in lp, "thoughts/shared/verification/ (type review-findings)"),
+        ("note" in lp, "thoughts/shared/review-notes/ or archive"),
+    ]
+    for cond, dest in rules:
+        if cond:
+            return dest
+    return "unclear: read it; likely docs/design (design) or thoughts/shared/research, else archive"
+
+
+if a.brownfield:
+    kit = set(files) | {".eng/PROCESS.md"}
+    todo = sorted(p for p in pre_existing if p not in kit and not p.startswith((".eng/", "node_modules/")))
+    print("\nBrownfield: %d pre-existing markdown file(s). For each design/ADR/research/plan doc:" % len(todo))
+    print("  git mv <old> <kit location>; add front matter; back-fill the Approval log (PROCESS.md section 11).")
+    for p in todo:
+        print("  %s  -> %s" % (p, suggest(p)))

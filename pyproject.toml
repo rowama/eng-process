@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling>=1.18"]
+build-backend = "hatchling.build"
+
+[project]
+name = "eng-process"
+dynamic = ["version"]
+description = "File-based engineering process kit for AI coding agents: skills, templates, gates (eng-check) and a headless agent runner (eng-run)."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Rob Martin" }]
+requires-python = ">=3.9"
+dependencies = []
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+  "Environment :: Console",
+  "Topic :: Software Development",
+]
+
+[project.urls]
+Homepage = "https://github.com/rowama/eng-process"
+
+[project.scripts]
+eng = "eng_process.cli:main"
+
+[tool.hatch.version]
+path = "VERSION"
+pattern = "(?P<version>\\d+\\.\\d+\\.\\d+)"
+
+[tool.hatch.build]
+exclude = ["**/__pycache__", "**/*.pyc"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/eng_process"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"bin" = "eng_process/kit/bin"
+"skills" = "eng_process/kit/skills"
+"templates" = "eng_process/kit/templates"
+"PROCESS.md" = "eng_process/kit/PROCESS.md"
+"VERSION" = "eng_process/kit/VERSION"
+"CHANGELOG.md" = "eng_process/kit/CHANGELOG.md"
+
+[tool.hatch.build.targets.sdist]
+include = ["/bin", "/skills", "/templates", "/src", "/tests", "/PROCESS.md", "/VERSION", "/CHANGELOG.md", "/README.md", "/SOURCES.md", "/LICENSE", "/pyproject.toml"]

@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+"""eng-status <repo_dir>
+
+Print a one-screen summary: phase, triage, working agreements, active slice, next action,
+blockers, pending approvals (rendered from front matter), readiness of the current phase,
+latest artifact of each type, slice board, eng-check result, and - when a slice is ready for
+the implementer - the standard 'ready to implement' message (templates/ready-to-implement.md)."""
+import os, sys, re, glob, argparse, subprocess
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import englib as L
+
+ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+ap.add_argument("repo_dir")
+a = ap.parse_args()
+repo = os.path.abspath(a.repo_dir)
+sp = os.path.join(repo, "PROJECT_STATE.md")
+if not os.path.isfile(sp):
+    sys.exit("no PROJECT_STATE.md in %s (run eng-init)" % repo)
+arts = L.load_artifacts(repo)
+fm, body = arts.get("PROJECT_STATE.md") or ({}, "")
+fm = fm or {}
+sec = lambda n: (L.section(body, n) or "-") or "-"
+print("== %s ==  (eng-process %s)" % (os.path.basename(repo), L.KIT_VERSION))
+print("phase: %-12s triage: %-7s owner: %s  updated: %s" % (fm.get("phase"), fm.get("triage"), fm.get("owner_agent"), fm.get("date")))
+print("working agreements: " + "  ".join("%s=%s" % (k, fm.get(k, "?")) for k in L.WORKING_AGREEMENTS))
+print("branch: %s  commit: %s" % (L.git(repo, "branch", "--show-current"), L.git(repo, "rev-parse", "--short", "HEAD")))
+print("active slice: %s" % fm.get("active_slice"))
+pend = L.pending_list(fm)
+print("pending approvals: %s" % ("none" if not pend else ""))
+for p in pend:
+    print("  - " + p)
+for s in ("Next action", "Blockers"):
+    print("%s: %s" % (s.lower(), sec(s).replace("\n", " | ")[:200]))
+miss = L.readiness(arts, fm.get("phase"), fm.get("triage"))
+if miss:
+    back = min((ph for ph, _ in miss), key=lambda p: L.PHASE_IDX[p])
+    print("readiness: NOT READY for '%s'; earliest incomplete phase: %s" % (fm.get("phase"), back))
+    for _, m in miss:
+        print("  missing: " + m)
+else:
+    print("readiness: ok for phase '%s'" % fm.get("phase"))
+print("-- latest artifacts --")
+for t, (_, d, _) in L.ARTIFACTS.items():
+    if not d: continue
+    # latest by front-matter date, then mtime (not by filename)
+    fs = sorted(glob.glob(os.path.join(repo, d, "*.md")),
+                key=lambda f: (str((L.read_front_matter(f)[0] or {}).get("date") or ""), os.path.getmtime(f)))
+    if fs:
+        f = fs[-1]; afm = L.read_front_matter(f)[0] or {}
+        print("  %-15s %-58s %s  (%d total)" % (t, L.rel(f, repo), afm.get("status"), len(fs)))
+sl = sorted(glob.glob(os.path.join(repo, "thoughts/shared/slices/*.md")))
+if sl:
+    print("-- slices --")
+    for f in sl:
+        afm = L.read_front_matter(f)[0] or {}
+        print("  [%-11s] %s" % (afm.get("status"), os.path.basename(f)))
+r = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.realpath(__file__)), "eng-check"), repo, "--quiet"],
+                   capture_output=True, text=True)
+lines = r.stdout.strip().splitlines()
+print("-- " + lines[-1])
+for l in lines[:-1][:5]:
+    print("   " + l)
+
+# ready to implement: phase implement, check OK, nothing pending, active slice is a todo card of an approved plan
+act = str(fm.get("active_slice") or "none")
+sfm = (L.read_front_matter(os.path.join(repo, act))[0] or {}) if act.endswith(".md") and os.path.isfile(os.path.join(repo, act)) else {}
+if fm.get("phase") == "implement" and r.returncode == 0 and not pend and sfm.get("status") == "todo":
+    plan = sfm.get("plan", "")
+    pfm = (L.read_front_matter(os.path.join(repo, plan))[0] or {}) if plan and os.path.isfile(os.path.join(repo, plan)) else {}
+    if pfm.get("status") in ("approved", "in-progress") or fm.get("triage") == "small":
+        with open(L.template_path(repo, "ready-to-implement.md"), encoding="utf-8") as f:
+            msg = L.fill(f.read(), repo=repo, plan=plan or "(small task: slice card only)", slice=act,
+                         slice_id=sfm.get("id", act), implementer=fm.get("implementer", "the implementer"),
+                         push=fm.get("push_permission", "ask"))
+        print("-- ready to implement (send to Rob) --")
+        print(re.sub(r"<!--.*?-->\n?", "", msg, flags=re.S).strip())
+
+# mandatory plan review (medium/large): print the ready-to-paste codex command while a plan awaits CP-C
+if fm.get("triage") in ("medium", "large"):
+    def rels(pat):
+        return sorted(L.rel(p, repo) for p in glob.glob(os.path.join(repo, pat)))
+    plans = [p for p in rels("thoughts/shared/plans/*.md")
+             if (L.read_front_matter(os.path.join(repo, p))[0] or {}).get("status") in ("draft", "in-review")
+             or any(p in x and "CP-C" in x for x in pend)]
+    for plan in plans:
+        pfm = L.read_front_matter(os.path.join(repo, plan))[0] or {}
+        prob = L.plan_review_problems(repo, plan, pfm)
+        state = "clean" if not prob else prob[0]
+        slices = [s for s in rels("thoughts/shared/slices/*.md")
+                  if (L.read_front_matter(os.path.join(repo, s))[0] or {}).get("plan") == plan]
+        sglob = "thoughts/shared/slices/*.md" if not slices else " ".join(slices)
+        def best(pat):
+            c = [p for p in rels(pat) if (L.read_front_matter(os.path.join(repo, p))[0] or {}).get("status") == "approved"]
+            return c[-1] if c else None
+        design = best("docs/design/*.md") or "<design doc>"
+        arch = best("docs/architecture/*.md") or "(no architecture doc)"
+        adrs = [os.path.basename(p)[:4] for p in rels("docs/decisions/[0-9][0-9][0-9][0-9]-*.md")]
+        adr = ("ADR-%s..ADR-%s (docs/decisions/)" % (adrs[0], adrs[-1])) if adrs else "(no ADRs)"
+        slug = re.sub(r"^\d{4}-\d{2}-\d{2}-", "", os.path.basename(plan)[:-3])
+        out = pfm.get("plan_review") if isinstance(pfm.get("plan_review"), str) and pfm.get("plan_review") not in ("", "none") \
+            else "thoughts/shared/verification/%s-%s-plan-review.md" % (L.now().strftime("%Y-%m-%d"), slug)
+        print("-- mandatory plan review for %s: %s --" % (plan, state))
+        print("# from the repo root:")
+        print('codex exec "review %s and the slice cards %s against %s (REQ ids), %s and %s '
+              'for gaps, wrong ordering, missing tests, and security holes; output a numbered list of '
+              'findings with severity" -o %s' % (plan, sglob, design, arch, adr, out))
+        print("   or, same review via the model-agnostic runner (writes the findings file + links plan_review:):")
+        print("   python3 .eng/bin/eng-run plan-review %s" % plan)
+        print("   then: add review-findings front matter + Findings table (severity, disposition) above the raw output in %s;" % out)
+        print("   set plan_review: %s in the plan" % out)

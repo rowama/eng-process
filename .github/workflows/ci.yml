@@ -1,0 +1,40 @@
+name: ci
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / py${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.9", "3.12"]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: python3 on PATH (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          d=$(dirname "$(command -v python)")
+          cp "$d/python.exe" "$d/python3.exe"
+          python3 -V
+      - name: git identity
+        run: |
+          git config --global user.name ci
+          git config --global user.email ci@example.invalid
+          git config --global init.defaultBranch main
+      - name: kit tests
+        run: bash tests/run-tests.sh
+      - name: smoke - pipx install, eng init, eng check
+        run: bash tests/smoke-install.sh

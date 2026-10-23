@@ -1,0 +1,425 @@
+#!/usr/bin/env python3
+"""eng-run <role> [args] [--repo DIR] [--runner NAME] [--dry-run] [--allow-self-review] [--base REF]
+
+Model-agnostic agent runner. Run from the repo root (python3 .eng/bin/eng-run ..., Windows: py .eng/bin/eng-run ...).
+Roles:
+  plan-review <plan-file>             independent plan review (mandatory gate, medium/large)
+  implement   <plan-file> <slice-id>  implement one slice (eng-implement-slice)
+  code-review <slice-id> | --base REF independent review of a slice diff (advisory)
+Prompt templates: .eng/prompts/<role>.md (versioned, kit-owned). Runner per role: .eng/runners.toml [roles]
+(defaults implement=claude, plan-review=codex, code-review=codex); env override ENG_RUNNER_<ROLE>
+(ENG_RUNNER_PLAN_REVIEW, ENG_RUNNER_IMPLEMENT, ENG_RUNNER_CODE_REVIEW); --runner overrides both.
+Runners: claude (claude -p), codex (codex exec --sandbox ... / codex review --base), or any [runners.<name>]
+table with type = "command" and a command template.
+Every run writes thoughts/shared/runs/<date>-<role>-<target>.md (prompt, full output, summary). Reviews also
+write a review-findings file in thoughts/shared/verification/ (never terminal only); plan-review links it from
+the plan's plan_review: field when empty. code-review refuses when the reviewer is the slice's implementer
+(run log, else PROJECT_STATE implementer) unless --allow-self-review. --dry-run prints the exact command, writes nothing.
+Exit code: the runner's exit code (2 usage/config error, 3 self-review refused, 127 runner not found)."""
+import os, re, sys, glob, shlex, shutil, argparse, subprocess
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import englib as L
+
+ROLES = ("plan-review", "implement", "code-review")
+DEFAULT_RUNNER = {"implement": "claude", "plan-review": "codex", "code-review": "codex"}
+BUILTIN = ("claude", "codex")
+ROLE_PHASE = {"plan-review": "plan", "implement": "implement", "code-review": "verify"}
+CLAUDE_REVIEW_TOOLS = "Read,Grep,Glob,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git status:*)"
+SEV_RE = re.compile(r"^\s*(?:[-*]\s*)?(\d+)[.)]\s*\**\[?\s*(critical|high|medium|low)\s*\]?\**\s*[-:]?\s*(.*)$", re.I)
+
+
+def die(msg, code=2):
+    print("eng-run: error: " + msg, file=sys.stderr)
+    sys.exit(code)
+
+
+def slug(s):
+    return re.sub(r"[^a-z0-9]+", "-", str(s).lower()).strip("-") or "x"
+
+
+def norm_agent(x):
+    """'claude-code' / 'Claude Code' / 'claude.exe' -> 'claude'; 'codex-cli' -> 'codex'."""
+    x = os.path.basename(L.posix(str(x or "")).strip()).lower()
+    x = re.sub(r"\.(exe|cmd|bat|ps1)$", "", x)
+    return re.sub(r"[\s_-]*(code|cli)$", "", x).strip(" -_")
+
+
+def cmd_str(argv):
+    return subprocess.list2cmdline(argv) if os.name == "nt" else " ".join(shlex.quote(a) for a in argv)
+
+
+def fence(text):
+    n = max([3] + [len(m) + 1 for m in re.findall(r"`{3,}", text)])
+    return "`" * n
+
+
+def safe(text):
+    """Embedded tool output must not look like an unfilled template token to eng-check."""
+    return text.replace("{{", "{ {").replace("}}", "} }")
+
+
+def repo_path(repo, p):
+    """User-supplied path (POSIX, Windows backslash, or absolute) -> repo-relative POSIX path."""
+    p = str(p)
+    if os.path.isabs(p):
+        try:
+            p = os.path.relpath(p, repo)
+        except ValueError:   # Windows: different drive
+            pass
+    return L.posix(p)
+
+
+def find_slice(repo, sid):
+    for p in sorted(glob.glob(os.path.join(repo, "thoughts", "shared", "slices", "*.md"))):
+        fm = L.read_front_matter(p)[0] or {}
+        if str(fm.get("id", "")).lower() == str(sid).lower() or os.path.basename(p)[:-3].lower() == str(sid).lower():
+            return L.rel(p, repo), fm
+    return None, {}
+
+
+def runs_for(repo, role, slice_id=None):
+    out = []
+    for p in glob.glob(os.path.join(repo, "thoughts", "shared", "runs", "*.md")):
+        fm = L.read_front_matter(p)[0] or {}
+        if fm.get("type") != "run-log" or fm.get("role") != role:
+            continue
+        if slice_id and str(fm.get("slice", "")).lower() != str(slice_id).lower():
+            continue
+        out.append((str(fm.get("started", fm.get("date", ""))), os.path.basename(p), fm))
+    return [fm for _, _, fm in sorted(out)]
+
+
+def unique(path):
+    base, ext = os.path.splitext(path)
+    n, p = 2, path
+    while os.path.exists(p):
+        p = "%s-%d%s" % (base, n, ext); n += 1
+    return p
+
+
+def as_list(v):
+    if v is None:
+        return []
+    return list(v) if isinstance(v, list) else shlex.split(str(v))
+
+
+ap = argparse.ArgumentParser(prog="eng-run", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+ap.add_argument("role", choices=ROLES)
+ap.add_argument("targets", nargs="*", help="plan-review: <plan-file>; implement: <plan-file> <slice-id>; code-review: <slice-id>")
+ap.add_argument("--base", help="code-review: diff base ref (default: [review] base in runners.toml, else main)")
+ap.add_argument("--repo", default=".", help="repo root (default: current directory)")
+ap.add_argument("--runner", help="override the configured runner for this role")
+ap.add_argument("--dry-run", action="store_true", help="print the exact command and output paths; run and write nothing")
+ap.add_argument("--allow-self-review", action="store_true", help="let the implementer's own tool review its slice")
+a = ap.parse_args()
+
+repo = os.path.abspath(a.repo)
+if not os.path.isfile(os.path.join(repo, "PROJECT_STATE.md")):
+    die("no PROJECT_STATE.md in %s (run from the repo root or pass --repo)" % repo)
+state = L.read_front_matter(os.path.join(repo, "PROJECT_STATE.md"))[0] or {}
+try:
+    cfg = L.load_toml(os.path.join(repo, ".eng", "runners.toml"))
+except Exception as e:
+    die(".eng/runners.toml: %s" % e)
+roles_cfg, runners_cfg = cfg.get("roles", {}) or {}, cfg.get("runners", {}) or {}
+env_key = "ENG_RUNNER_" + a.role.upper().replace("-", "_")
+rname = a.runner or os.environ.get(env_key) or roles_cfg.get(a.role) or DEFAULT_RUNNER[a.role]
+rname = str(rname).strip()
+spec = dict(runners_cfg.get(rname, {}) or {})
+rtype = spec.get("type") or (rname if rname in BUILTIN else None)
+if rtype not in BUILTIN + ("command",):
+    die("runner '%s' is not built in (claude, codex) and has no [runners.%s] table with type = \"command\" in .eng/runners.toml" % (rname, rname))
+if rtype == "command" and not spec.get("command"):
+    die("[runners.%s] needs command = \"...\" (placeholders {prompt} {prompt_file} {output_file} ...)" % rname)
+exe_name = spec.get("executable") or (shlex.split(spec["command"])[0] if rtype == "command" else rtype)
+tool = norm_agent(exe_name)
+
+# --- role arguments -> context
+date = L.now().strftime("%Y-%m-%d")
+ctx = {"kit_version": L.KIT_VERSION, "date": date, "plan": "(none)", "slice": "(none)", "slice_file": "(none)",
+       "base": "", "subject": "", "slices": "thoughts/shared/slices/*.md", "design": "(no approved design doc)",
+       "arch": "(no architecture doc)"}
+plan = slice_id = None
+t = a.targets
+if a.role == "plan-review":
+    if len(t) != 1:
+        die("usage: eng-run plan-review <plan-file>")
+    plan = repo_path(repo, t[0])
+    target = re.sub(r"^\d{4}-\d{2}-\d{2}-", "", os.path.basename(plan)[:-3] if plan.endswith(".md") else os.path.basename(plan))
+elif a.role == "implement":
+    if len(t) != 2:
+        die("usage: eng-run implement <plan-file> <slice-id>")
+    plan, slice_id = repo_path(repo, t[0]), t[1]
+    target = slice_id
+else:
+    if len(t) > 1 or (not t and not a.base):
+        die("usage: eng-run code-review <slice-id> | --base REF")
+    slice_id = t[0] if t else None
+    if slice_id is None:
+        act = state.get("active_slice")
+        if isinstance(act, str) and act not in ("", "none") and os.path.isfile(os.path.join(repo, L.posix(act))):
+            slice_id = (L.read_front_matter(os.path.join(repo, L.posix(act)))[0] or {}).get("id")
+    ctx["base"] = a.base or (cfg.get("review", {}) or {}).get("base") or "main"
+    target = t[0] if t else "base-" + ctx["base"]
+target = slug(target)
+if plan:
+    if not os.path.isfile(os.path.join(repo, plan)):
+        die("plan file not found: " + plan)
+    ctx["plan"] = plan
+if slice_id:
+    sf, sfm = find_slice(repo, slice_id)
+    ctx["slice"] = str(slice_id)
+    if sf:
+        ctx["slice_file"] = sf
+        if not plan and isinstance(sfm.get("plan"), str) and sfm.get("plan") not in ("", "none"):
+            ctx["plan"] = L.posix(sfm["plan"])
+    elif a.role == "implement":
+        print("eng-run: warning: no slice card with id '%s' in thoughts/shared/slices/" % slice_id, file=sys.stderr)
+if a.role == "plan-review":
+    sl = [L.rel(p, repo) for p in sorted(glob.glob(os.path.join(repo, "thoughts", "shared", "slices", "*.md")))
+          if L.posix((L.read_front_matter(p)[0] or {}).get("plan", "")) == plan]
+    ctx["slices"] = " ".join(sl) if sl else "thoughts/shared/slices/*.md"
+    for key, pat in (("design", "docs/design/*.md"), ("arch", "docs/architecture/*.md")):
+        c = [L.rel(p, repo) for p in sorted(glob.glob(os.path.join(repo, pat)))
+             if (L.read_front_matter(p)[0] or {}).get("status") == "approved"]
+        if c:
+            ctx[key] = c[-1]
+ctx["subject"] = "slice %s" % slice_id if slice_id else "the branch"
+
+# --- self-review guard
+if a.role == "code-review":
+    prior = runs_for(repo, "implement", slice_id) or ([] if slice_id and runs_for(repo, "implement") else runs_for(repo, "implement"))
+    if prior:
+        impl, impl_tool, src = prior[-1].get("runner", ""), prior[-1].get("tool", ""), "run log"
+    else:
+        impl, impl_tool, src = state.get("implementer", ""), "", "PROJECT_STATE implementer"
+    mine = {norm_agent(rname), tool} - {""}
+    theirs = {norm_agent(impl), norm_agent(impl_tool)} - {""}
+    if mine & theirs:
+        msg = "self-review: reviewer runner '%s' (%s) is the implementer of %s ('%s', from %s)" % (
+            rname, tool, slice_id or "this work", impl, src)
+        if not a.allow_self_review:
+            die(msg + ". Pick another runner (--runner, %s) or pass --allow-self-review (record why)." % env_key, 3)
+        print("eng-run: warning: " + msg + " (--allow-self-review)", file=sys.stderr)
+
+# --- paths
+runs_dir = os.path.join(repo, "thoughts", "shared", "runs")
+run_log = unique(os.path.join(runs_dir, "%s-%s-%s.md" % (date, a.role, target)))
+stem = os.path.basename(run_log)[:-3]
+ver_rel = None
+if a.role != "implement":
+    vdir = os.path.join(repo, "thoughts", "shared", "verification")
+    name = "%s-%s-plan-review.md" % (date, target) if a.role == "plan-review" else "%s-%s-review.md" % (date, target)
+    ver_rel = L.rel(unique(os.path.join(vdir, name)), repo)
+# commands run with cwd = repo root, so they get repo-relative paths (portable, no absolute cd)
+out_rel = "thoughts/shared/runs/%s.last-message.txt" % stem
+prompt_rel = "thoughts/shared/runs/%s.prompt.txt" % stem
+out_file, prompt_file = os.path.join(repo, out_rel), os.path.join(repo, prompt_rel)
+ctx.update(output=ver_rel or L.rel(run_log, repo), run_log=L.rel(run_log, repo))
+
+# --- prompt
+ptpl = None
+for d in (os.path.join(repo, ".eng", "prompts"), os.path.join(L.KIT_DIR, "templates", "prompts")):
+    if os.path.isfile(os.path.join(d, a.role + ".md")):
+        ptpl = os.path.join(d, a.role + ".md"); break
+if not ptpl:
+    die("prompt template .eng/prompts/%s.md missing (run <kit>/bin/eng-init <repo> --upgrade)" % a.role)
+pfm, pbody = L.read_front_matter(ptpl)
+prompt_version = (pfm or {}).get("prompt_version", "?")
+prompt = L.fill(pbody, **ctx).strip() + "\n"
+
+# --- command
+role_key = a.role.replace("-", "_") + "_args"
+extra = as_list(spec.get("args"))
+stdin_text, prompt_via = None, str(spec.get("prompt_via", "auto"))
+resolved = shutil.which(exe_name)   # full path (Windows: finds claude.cmd / codex.cmd npm shims)
+found = resolved is not None
+exe = exe_name                      # shown name; replaced by `resolved` only when executing
+if prompt_via == "auto":
+    prompt_via = "stdin" if (resolved or "").lower().endswith((".cmd", ".bat")) or len(prompt) > 7000 else "arg"
+if rtype == "claude":
+    defaults = {"implement": ["--permission-mode", "acceptEdits"]}.get(a.role, ["--allowedTools", CLAUDE_REVIEW_TOOLS])
+    argv = [exe, "-p"] + ([prompt] if prompt_via == "arg" else []) + ["--output-format", "text"] + extra \
+        + as_list(spec.get(role_key, defaults))
+    stdin_text = prompt if prompt_via == "stdin" else None
+    use_out = False
+elif rtype == "codex":
+    if a.role == "code-review":
+        # `codex review` prints the review to stdout (no -o); --base and a custom prompt are mutually exclusive.
+        argv = [exe, "review"] + extra + as_list(spec.get(role_key, []))
+        if spec.get("review_prompt"):
+            argv += [prompt] if prompt_via == "arg" else ["-"]
+            stdin_text = prompt if prompt_via == "stdin" else None
+        else:
+            argv += ["--base", ctx["base"]]
+        use_out = False
+    else:
+        # Conservative: implement may write only inside the workspace; plan-review is read-only.
+        # Opt in to more autonomy in runners.toml, e.g. implement_args = ["--approve-for-me"].
+        defaults = {"implement": ["--sandbox", "workspace-write"]}.get(a.role, ["--sandbox", "read-only"])
+        argv = [exe, "exec"] + extra + as_list(spec.get(role_key, defaults)) + ["-o", out_rel] \
+            + ([prompt] if prompt_via == "arg" else ["-"])
+        stdin_text = prompt if prompt_via == "stdin" else None
+        use_out = True
+else:
+    subs = {"prompt": prompt, "prompt_file": prompt_rel, "output_file": out_rel, "repo": repo, "role": a.role,
+            "target": target, "base": ctx["base"], "plan": ctx["plan"], "slice": ctx["slice"]}
+    toks = shlex.split(spec["command"], posix=True)
+    argv = []
+    for i, tk in enumerate(toks):
+        v = re.sub(r"\{(\w+)\}", lambda m: str(subs.get(m.group(1), m.group(0))), tk)
+        argv.append(exe if i == 0 else v)
+    argv += extra
+    use_out = "{output_file}" in spec["command"]
+    stdin_text = prompt if prompt_via == "stdin" else None
+needs_prompt_file = rtype == "command" and "{prompt_file}" in spec["command"]
+
+
+def shown(argv):
+    """Command for logs: the prompt argument is replaced by a reference (it is in the run log)."""
+    return cmd_str(["<prompt: see run log>" if x == prompt else x for x in argv]) + (" < <prompt on stdin>" if stdin_text else "")
+
+
+if a.dry_run:
+    print("# eng-run %s %s (runner %s, type %s, prompt %s v%s)" % (a.role, " ".join(t), rname, rtype,
+          L.posix(os.path.relpath(ptpl, repo)) if ptpl.startswith(repo) else "kit:" + a.role + ".md", prompt_version))
+    if not found:
+        print("# warning: '%s' not found on PATH" % exe_name)
+    print("# from the repo root:")
+    print(cmd_str(argv) + (" < %s" % prompt_rel if stdin_text else ""))
+    print("# run log:      " + L.rel(run_log, repo))
+    if ver_rel:
+        print("# review file:  " + ver_rel)
+    print("# dry run: nothing executed, nothing written")
+    sys.exit(0)
+
+if not found:
+    die("runner '%s': executable '%s' not found on PATH (install it, or set another runner in .eng/runners.toml / %s)"
+        % (rname, exe_name, env_key), 127)
+
+# --- run (output streamed to the terminal AND captured; always saved to files below)
+os.makedirs(runs_dir, exist_ok=True)
+if needs_prompt_file or stdin_text:
+    open(prompt_file, "w", encoding="utf-8", newline="\n").write(prompt)
+for p_ in (out_file,):
+    if os.path.isfile(p_):
+        os.remove(p_)
+started = L.now()
+print("eng-run: %s via %s: %s" % (a.role, rname, shown(argv)), flush=True)
+chunks = []
+try:
+    proc = subprocess.Popen([resolved] + argv[1:], cwd=repo, stdin=subprocess.PIPE if stdin_text else subprocess.DEVNULL,
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    if stdin_text:
+        proc.stdin.write(stdin_text.encode("utf-8")); proc.stdin.close()
+    for raw in iter(proc.stdout.readline, b""):
+        line = raw.decode("utf-8", errors="replace")
+        chunks.append(line)
+        sys.stdout.write(line); sys.stdout.flush()
+    rc = proc.wait()
+except OSError as e:
+    chunks.append("eng-run: failed to start runner: %s\n" % e)
+    rc = 127
+full = "".join(chunks).replace("\r\n", "\n")
+result = ""
+if use_out and os.path.isfile(out_file):
+    result = open(out_file, encoding="utf-8", errors="replace").read().replace("\r\n", "\n").strip()
+if not result:
+    result = full.strip()
+
+# --- review artifact
+rows, verdict = [], ""
+if a.role != "implement":
+    for line in result.splitlines():
+        m = SEV_RE.match(line)
+        if m:
+            text = m.group(3).replace("|", "/").strip()
+            loc, _, fnd = text.partition(" - ")
+            if not fnd:
+                loc, fnd = "-", text
+            rows.append((m.group(1), m.group(2).lower(), loc.strip("`* ") or "-", fnd.strip()))
+    if rows:
+        cnt = {}
+        for r in rows:
+            cnt[r[1]] = cnt.get(r[1], 0) + 1
+        verdict = "%d finding(s): %s" % (len(rows), ", ".join("%d %s" % (cnt[s], s) for s in ("critical", "high", "medium", "low") if s in cnt))
+    elif re.search(r"\bno findings\b", result, re.I):
+        verdict = "No findings."
+    else:
+        verdict = "no numbered '[severity]' findings parsed; read the raw output and fill the Findings table by hand"
+
+summary = []
+summary.append("- role: %s; runner: %s (%s); exit code: %d; started %s" % (a.role, rname, rtype, rc, started.strftime("%Y-%m-%d %H:%M:%S")))
+if ver_rel:
+    summary.append("- review file: %s - %s" % (ver_rel, verdict))
+if rc != 0:
+    summary.append("- FAILED: the runner exited with %d; see Output" % rc)
+tail = [l for l in result.splitlines() if l.strip()][-12:]
+if a.role == "implement" and tail:
+    summary.append("- last lines of the result:")
+    summary += ["  > " + l[:160] for l in tail]
+
+if ver_rel and rc == 0:
+    kind = "plan" if a.role == "plan-review" else "slice"
+    rid = "%s-%s-%s" % ("PLANREV" if kind == "plan" else "REVIEW", date.replace("-", ""), slug(os.path.basename(ver_rel)[11:-3]))
+    links = [x for x in (ctx["plan"], ctx["slice_file"]) if x not in ("(none)", "") and os.path.isfile(os.path.join(repo, x))]
+    head = L.git(repo, "rev-parse", "--short", "HEAD")
+    table = "".join("| %s | %s | %s | %s | open | |\n" % r for r in rows)
+    body = ("---\nid: %s\ntype: review-findings\nphase: %s\nstatus: open\nowner_agent: eng-run\ndate: %s\nlinks: [%s]\n"
+            "review_kind: %s\nsubject: \"%s\"\ndiff: %s\nreviewer: %s\ncommand: \"%s\"\nrun_log: %s\n---\n"
+            "# Independent review: %s %s\n"
+            "<!-- Written by eng-run (prompt %s v%s). Each finding row starts 'open': set disposition fixed (where) |\n"
+            "     accepted-risk (ONLY with Rob's approval, e.g. \"Rob %s\") | rejected (reason). Plan reviews gate\n"
+            "     implementation (medium/large); slice reviews are advisory. -->\n\n"
+            "## Findings\n| # | Severity | Location | Finding | Disposition | Reason / approval |\n|---|---|---|---|---|---|\n%s%s\n"
+            "## Reviewer raw output\n%s\n%s\n%s\n") % (
+        rid, "plan" if kind == "plan" else "verify", date, ", ".join(links), kind,
+        (ctx["plan"] + " + slice cards") if kind == "plan" else ("%s (%s)" % (ctx["slice"], ctx["slice_file"])),
+        "n.a." if kind == "plan" else "%s...%s" % (ctx["base"], head), rname, shown(argv).replace('"', "'"),
+        L.rel(run_log, repo), a.role, target, a.role, prompt_version, date, table,
+        "" if rows else ("\nNo findings.\n" if verdict == "No findings." else "\n"),
+        fence(result), safe(result), fence(result))
+    os.makedirs(os.path.dirname(os.path.join(repo, ver_rel)), exist_ok=True)
+    open(os.path.join(repo, ver_rel), "w", encoding="utf-8", newline="\n").write(body)
+    if a.role == "plan-review":   # integrate with the plan_review: gate
+        pp = os.path.join(repo, plan)
+        cur = (L.read_front_matter(pp)[0] or {}).get("plan_review")
+        if not cur or cur in ("none", []) or not isinstance(cur, str):
+            txt = open(pp, encoding="utf-8").read()
+            end = txt.find("\n---", 4)
+            fmtxt = txt[:end]
+            if re.search(r"(?m)^plan_review:", fmtxt):
+                fmtxt = re.sub(r"(?m)^plan_review:.*$", "plan_review: " + ver_rel, fmtxt, count=1)
+            else:
+                fmtxt += "\nplan_review: " + ver_rel
+            open(pp, "w", encoding="utf-8", newline="\n").write(fmtxt + txt[end:])
+            summary.append("- set plan_review: %s in %s" % (ver_rel, plan))
+        else:
+            summary.append("- plan_review: already %s; point it at %s if this review supersedes it" % (L.posix(cur), ver_rel))
+        summary.append("- next: disposition every finding (fixed / accepted-risk with Rob / rejected + reason); run .eng/bin/eng-check .")
+
+# --- run log
+links = [x for x in (ctx["plan"], ctx["slice_file"], ver_rel if (ver_rel and rc == 0) else None)
+         if x and x not in ("(none)",) and os.path.isfile(os.path.join(repo, x))]
+F = fence(prompt + full + result)
+log = ("---\nid: RUN-%s%s\ntype: run-log\nphase: %s\nstatus: %s\nowner_agent: eng-run\ndate: %s\nlinks: [%s]\n"
+       "role: %s\nrunner: %s\ntool: %s\nslice: %s\nplan: %s\nbase: %s\nexit_code: %d\nstarted: %s\nprompt_template: %s v%s\n---\n"
+       "# eng-run %s %s\n\n## Summary\n%s\n\n## Command\n%s\n%s\n%s\n\n## Prompt\n%s\n%s%s\n\n## Output\n%s\n%s\n%s\n") % (
+    stem, "", ROLE_PHASE[a.role], "ok" if rc == 0 else "failed",
+    date, ", ".join(links), a.role, rname, tool, ctx["slice"] if slice_id else "none",
+    ctx["plan"] if ctx["plan"] != "(none)" else "none", ctx["base"] or "none", rc, started.isoformat(timespec="seconds"),
+    a.role + ".md", prompt_version, a.role, target, safe("\n".join(summary)),
+    F, safe(shown(argv)), F, F, safe(prompt), F, F, safe(full.rstrip("\n")) or "(no output)", F)
+if use_out and result and result != full.strip():
+    log += "\n## Result (final message, %s)\n%s\n%s\n%s\n" % ("-o file" if rtype == "codex" else "output_file", F, safe(result), F)
+open(run_log, "w", encoding="utf-8", newline="\n").write(log)
+for p in (out_file, prompt_file):     # their content is in the run log
+    if os.path.isfile(p):
+        os.remove(p)
+print("\neng-run: run log %s" % L.rel(run_log, repo))
+if ver_rel and rc == 0:
+    print("eng-run: review  %s (%s)" % (ver_rel, verdict))
+for s in summary:
+    if s.startswith("- set plan_review") or s.startswith("- plan_review"):
+        print("eng-run: " + s[2:])
+sys.exit(rc)

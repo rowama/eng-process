@@ -1,0 +1,221 @@
+#!/usr/bin/env python3
+"""eng-check <repo_dir> [--quiet]
+
+Validate eng-process state. Exit 0 = OK, 1 = errors (each printed as 'ERROR <file>: <msg>').
+Checks:
+  1. Required files/dirs exist (run eng-init to create them).
+  2. Every artifact (docs/{design,architecture,vision,decisions}, thoughts/shared/** except
+     review-notes/, PROJECT_STATE, AGENTS, OWNER-GUIDE, DoD) has id, type, phase, status,
+     owner_agent, date, links; valid phase and status for its type.
+  3. No unfilled template tokens ({{...}}); unique ids; ADR filename NNNN-*.md matches id ADR-NNNN;
+     partially-accepted ADRs have a '## Parts' section.
+  4. PROJECT_STATE links resolve; triage is a known value.
+  5. Plans contain required sections.
+  6. pending_approvals (front matter is the single source of truth): each item is
+     'CP-X: <path|url> - <decision>', each path exists; an item for a checkpoint of an EARLIER
+     phase than the current one blocks (later checkpoints may be pending early); the body
+     'Pending approvals' section, if it lists CP- items, must match the front matter exactly.
+  7. Phase prerequisites for the triage size (research/architecture/plan/implement/verify/ship),
+     see englib.readiness. In-progress slices need an approved plan.
+  8. Approval log <-> statuses: a logged approval must match an approved/accepted artifact, and
+     every approved/accepted design/architecture/research/plan/ADR must appear in the log.
+  9. WIP: at most one slice in-progress.
+ 10. CHANGELOG.md has no '<...>' placeholders or empty bullets.
+  11. Mandatory plan review (medium/large): before a slice is in-progress or phase is
+     implement/verify/ship, the plan's 'plan_review:' must point to a review-findings file with no
+     open critical/high finding; accepted-risk needs Rob's approval, rejected needs a reason.
+  12. Approvals written outside the Approval log (struck-through ~~...~~ text and history sections
+     ignored); warn-only until v2.4.0 (new checks warn for one version), --strict makes it an error.
+  13. Pseudo-approval statuses (e.g. approved-for-review) and docs without id fail cleanly.
+Warnings: [NEEDS CLARIFICATION] in approved designs, missing handoff, missing working-agreement fields."""
+import os, sys, re, glob, argparse
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import englib as L
+
+ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+ap.add_argument("repo_dir")
+ap.add_argument("--quiet", action="store_true")
+ap.add_argument("--strict", action="store_true", help="treat warn-only new checks (englib.WARN_ONLY_UNTIL) as errors now")
+a = ap.parse_args()
+repo = os.path.abspath(a.repo_dir)
+errs, warns = [], []
+E = lambda f, m: errs.append("ERROR %s: %s" % (f, m))
+W = lambda f, m: warns.append("WARN  %s: %s" % (f, m))
+exists = lambda p: os.path.exists(os.path.join(repo, p))
+
+if not os.path.isdir(repo):
+    print("ERROR %s: not a directory" % repo); sys.exit(1)
+for f in ["PROJECT_STATE.md", "AGENTS.md", "CHANGELOG.md", "TODOS.md", "OWNER-GUIDE.md",
+          "docs/definition-of-done.md", "thoughts/shared/process-feedback.md"]:
+    if not exists(f):
+        E(f, "required file missing (run eng-init)")
+for d in L.DIRS:
+    if not os.path.isdir(os.path.join(repo, d)):
+        E(d + "/", "required directory missing (run eng-init)")
+
+arts, ids = {}, {}
+for r, (fm, body) in L.load_artifacts(repo).items():
+    p = os.path.join(repo, r)
+    if fm is None:
+        E(r, "missing YAML front matter"); continue
+    for k in L.REQUIRED_FIELDS:
+        if k not in fm or fm[k] in ("", None):
+            if not (k == "links" and k in fm):
+                E(r, "front matter missing '%s'" % k)
+    t, st, ph = fm.get("type"), fm.get("status"), fm.get("phase")
+    if ph and ph not in L.PHASES:
+        E(r, "invalid phase '%s' (allowed: %s)" % (ph, ", ".join(L.PHASES)))
+    if t in L.STATUSES and isinstance(st, str) and st and st not in L.STATUSES[t] and not L.PSEUDO_APPROVAL.search(st):
+        E(r, "invalid status '%s' for type %s (allowed: %s)" % (st, t, ", ".join(sorted(L.STATUSES[t]))))
+    if "{{" in open(p, encoding="utf-8", errors="replace").read():
+        E(r, "unfilled template token {{...}}")
+    aid = fm.get("id")
+    if isinstance(aid, str) and aid:
+        if aid in ids:
+            E(r, "duplicate id '%s' (also in %s)" % (aid, ids[aid]))
+        ids[aid] = r
+    if isinstance(st, str) and st and L.PSEUDO_APPROVAL.search(st) and st not in L.APPROVED:
+        E(r, "pseudo-approval status '%s': only Rob approves; use 'in-review' (or 'input' for a pre-draft) until he does" % st)
+    for l in fm.get("links") or []:
+        if isinstance(l, str) and not re.match(r"^[a-z]+://", l):
+            if not (exists(l) or os.path.exists(os.path.join(os.path.dirname(p), l))):
+                E(r, "front-matter link does not resolve: " + l)
+    if t == "adr":
+        m = re.match(r"^(\d{4})-[a-z0-9-]+\.md$", os.path.basename(r))
+        if not m:
+            E(r, "ADR filename must be NNNN-slug.md (4 digits; see PROCESS.md 'Brownfield adoption')")
+        elif fm.get("id") != "ADR-" + m.group(1):
+            E(r, "ADR id '%s' does not match filename (expected ADR-%s)" % (fm.get("id"), m.group(1)))
+        if st == "partially-accepted" and not re.search(r"^## Parts", body, re.M):
+            E(r, "partially-accepted ADR needs a '## Parts' section marking each part accepted/proposed/deferred")
+    arts[r] = (fm, body)
+
+sp = "PROJECT_STATE.md"
+state, sbody = arts.get(sp, ({}, ""))
+if sp in arts:
+    for l in L.md_links(sbody):
+        if l and not exists(l):
+            E(sp, "link does not resolve: " + l)
+    if state.get("triage", "unset") not in L.TRIAGES:
+        E(sp, "invalid triage '%s' (allowed: %s)" % (state.get("triage"), ", ".join(sorted(L.TRIAGES))))
+    missing_wa = [k for k in L.WORKING_AGREEMENTS if k not in state]
+    if missing_wa:
+        W(sp, "working-agreement fields missing from front matter: " + ", ".join(missing_wa))
+
+plans = {r: v for r, v in arts.items() if v[0].get("type") == "plan"}
+for r, (fm, body) in plans.items():
+    for pat in L.PLAN_SECTIONS:
+        if not re.search(pat, body, re.M):
+            E(r, "plan missing required section matching '%s'" % pat.strip("^"))
+for r, (fm, body) in arts.items():
+    if fm.get("type") == "design" and fm.get("status") == "approved" and "[NEEDS CLARIFICATION" in body:
+        W(r, "approved design still contains [NEEDS CLARIFICATION]")
+
+# pending approvals
+phase, triage = state.get("phase"), state.get("triage", "unset")
+pending = L.pending_list(state)
+for item in pending:
+    cp, targets = L.parse_pending(item)
+    if not cp or cp not in L.CHECKPOINTS:
+        E(sp, "pending_approvals item not of form 'CP-X: <path> - <decision>' (X in %s): %s" % ("".join(L.CHECKPOINTS), item)); continue
+    if not any("/" in t or t.endswith(".md") for t in targets):
+        E(sp, "pending_approvals item names no artifact path or URL: " + item)
+    for t in targets:
+        if re.match(r"^[a-z]+://", t) or not ("/" in t or t.endswith(".md")):
+            continue
+        if not exists(t):
+            E(sp, "pending_approvals path does not exist: " + t)
+    cph = L.CHECKPOINTS[cp]
+    if phase in L.PHASE_IDX and L.PHASE_IDX[cph] < L.PHASE_IDX[phase] and phase not in ("any", "reflect"):
+        E(sp, "phase '%s' but earlier checkpoint CP-%s still pending: %s - get Rob's approval or set phase back" % (phase, cp, item))
+body_pending = L.section(sbody, "Pending approvals") or ""
+body_items = [re.sub(r"^[-*]\s*", "", l).strip() for l in body_pending.splitlines() if re.match(r"^[-*]?\s*CP-", l.strip())]
+if body_items and sorted(body_items) != sorted(pending):
+    E(sp, "body 'Pending approvals' disagrees with front matter pending_approvals (front matter is the source of truth; body should only reference it)")
+
+# phase prerequisites
+for _, msg in L.readiness(arts, phase, triage):
+    E(sp, "phase '%s' (triage %s) missing prerequisite: %s - run eng-triage readiness check" % (phase, triage, msg))
+
+# approval log consistency
+for row in L.approval_log(sbody):
+    if not re.search(r"approved|accepted", row["decision"]) or re.search(r"reject", row["decision"]):
+        continue
+    for pth in row["paths"]:
+        if pth not in arts:
+            if not exists(pth):
+                E(sp, "Approval log artifact does not exist: " + pth)
+            continue
+        s = arts[pth][0].get("status")
+        if s in L.UNAPPROVED:
+            E(sp, "Approval log records %s as approved but its status is '%s'" % (pth, s))
+logged = {p for row in L.approval_log(sbody) for p in row["paths"]}
+for r, (fm, _) in arts.items():
+    if fm.get("type") in L.LOGGED_TYPES and fm.get("status") in L.APPROVED and r not in logged:
+        E(r, "status '%s' but no Approval log row in PROJECT_STATE.md names this file" % fm.get("status"))
+
+_stray = W if L.warn_only("stray-approval", a.strict) else E
+_note = " [warn-only until v%s; --strict makes it an error]" % L.WARN_ONLY_UNTIL["stray-approval"] if _stray is W else ""
+for s_ in L.stray_approvals(sbody):
+    _stray(sp, "approval written outside the Approval log table (add a table row '| date | CP-X | path | decision |' instead): " + s_[:100] + _note)
+
+# slices / WIP
+slices = {r: v for r, v in arts.items() if v[0].get("type") == "slice"}
+active = [r for r, (fm, _) in slices.items() if fm.get("status") == "in-progress"]
+if len(active) > 1:
+    E("thoughts/shared/slices", "WIP limit exceeded: %d slices in-progress (%s); max 1" % (len(active), ", ".join(active)))
+for r in active:
+    pl = slices[r][0].get("plan", "")
+    if pl and os.path.isfile(os.path.join(repo, pl)):
+        pfm = L.read_front_matter(os.path.join(repo, pl))[0] or {}
+        if pfm.get("status") not in ("approved", "in-progress", "done"):
+            E(r, "slice in-progress but its plan status is '%s' (needs approval)" % pfm.get("status"))
+    elif triage != "small":
+        E(r, "slice in-progress but 'plan:' does not point to an existing plan file")
+
+# mandatory plan review (medium/large) before any slice is in-progress or phase implement+
+if triage in ("medium", "large"):
+    gated = set()
+    for r in active:
+        pl = slices[r][0].get("plan", "")
+        if pl in plans:
+            gated.add(pl)
+    if phase in L.IMPL_PHASES:
+        gated |= {r for r, (fm, _) in plans.items() if fm.get("status") in ("approved", "in-progress", "done")}
+    for pl in sorted(gated):
+        for msg in L.plan_review_problems(repo, pl, plans[pl][0]):
+            E(pl, "mandatory plan review: " + msg)
+
+# vendored kit must travel with the repo
+if not os.path.isfile(os.path.join(repo, ".eng", "bin", "eng-check")) or not os.path.isfile(os.path.join(repo, ".eng", "bin", "englib.py")):
+    E(".eng/bin", "vendored kit scripts missing (run <kit>/bin/eng-init <repo> --upgrade)")
+if not glob.glob(os.path.join(repo, ".claude", "skills", "eng-*", "SKILL.md")):
+    E(".claude/skills", "vendored eng-* skills missing (run <kit>/bin/eng-init <repo> --upgrade)")
+def _v(x):
+    try: return tuple(int(n) for n in x.strip().split("."))
+    except ValueError: return ()
+_vp = os.path.join(repo, ".eng", "VERSION")
+_rv = open(_vp).read().strip() if os.path.isfile(_vp) else ""
+_kits = [L.KIT_VERSION] + [open(p).read().strip() for p in [os.path.join(os.environ.get("ENG_KIT", ""), "VERSION")] if os.environ.get("ENG_KIT") and os.path.isfile(p)]
+for kv in _kits:
+    if _v(_rv) and _v(kv) and _v(_rv) < _v(kv):
+        W(".eng/VERSION", "vendored kit v%s is older than kit v%s (run <kit>/bin/eng-init <repo> --upgrade)" % (_rv, kv))
+        break
+
+# changelog placeholders
+if exists("CHANGELOG.md"):
+    for n, line in enumerate(open(os.path.join(repo, "CHANGELOG.md"), encoding="utf-8", errors="replace"), 1):
+        s = re.sub(r"<!--.*?-->", "", line).rstrip()
+        if re.search(r"<[^>\s][^>]*>", s) and not re.search(r"https?://", s):
+            E("CHANGELOG.md:%d" % n, "placeholder '<...>' left in changelog")
+        if re.match(r"^\s*[-*]\s*$", s):
+            E("CHANGELOG.md:%d" % n, "empty bullet in changelog")
+
+if phase and phase != "discover" and not glob.glob(os.path.join(repo, "thoughts/shared/handoffs/*.md")):
+    W(sp, "no handoff written yet (run eng-handoff at end of each session)")
+
+for m in errs + ([] if a.quiet else warns):
+    print(m)
+print("eng-check: %s - %d error(s), %d warning(s), %d artifact(s) checked" %
+      ("FAIL" if errs else "OK", len(errs), len(warns), len(arts)))
+sys.exit(1 if errs else 0)

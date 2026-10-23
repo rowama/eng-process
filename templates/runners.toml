@@ -1,0 +1,30 @@
+# eng-run runner configuration (project-owned; eng-init creates it once and never overwrites it).
+# Role -> runner. Env override per role: ENG_RUNNER_PLAN_REVIEW, ENG_RUNNER_IMPLEMENT, ENG_RUNNER_CODE_REVIEW.
+# Built-in runners: claude, codex. Add any other tool as a [runners.<name>] table with type = "command".
+[roles]
+implement = "claude"
+plan-review = "codex"
+code-review = "codex"
+
+[review]
+base = "main"            # default --base for code-review <slice-id>
+
+# Built-in adapters accept extra options, e.g.:
+# [runners.claude]
+# args = ["--model", "opus"]                       # appended to every claude call
+# implement_args = ["--permission-mode", "acceptEdits"]  # default for role implement
+# [runners.codex]
+# args = ["--model", "gpt-5-codex"]
+# implement_args = ["--sandbox", "workspace-write"]   # default: writes only inside the repo, no network
+# implement_args = ["--approve-for-me"]                 # opt in: auto-approved on-request escalations
+# implement_args = ["--full-auto"]                      # opt in (older codex CLIs)
+# plan_review_args = ["--sandbox", "read-only"]         # default for plan-review
+# review_prompt = false    # true: send the prompt template to 'codex review' instead of --base (they conflict)
+#
+# Generic command runner (config-only new tool). Placeholders, substituted per argument (paths with spaces are safe):
+#   {prompt} {prompt_file} {output_file} {repo} {role} {target} {base} {plan} {slice}
+# The tool's stdout is captured; if it writes {output_file}, that file is used as the result.
+# [runners.gemini]
+# type = "command"
+# command = "gemini -p {prompt}"
+# prompt_via = "arg"       # arg | stdin (stdin: the prompt is piped in)
