@@ -113,7 +113,9 @@ def _ver(x):
 
 
 # New checks are warn-only until the listed kit version, then they become errors ('--strict' forces errors now).
-WARN_ONLY_UNTIL = {"stray-approval": "2.4.0"}
+# stray-approval was warn-only in 2.3.x and is an error from 2.4.0.
+WARN_ONLY_UNTIL = {"stray-approval": "2.4.0", "rejected-no-evidence": "2.5.0",
+                   "draft-before-design": "2.5.0", "design-changed-after-approval": "2.5.0"}
 
 
 def warn_only(check, strict=False):
@@ -185,6 +187,51 @@ def plan_review_problems(repo, plan_rel, pfm):
         if f["disposition"] == "rejected" and len(f["reason"].strip()) < 3:
             probs.append("%s: rejected needs a reason" % tag)
     return probs
+
+
+# Evidence for rejecting a finding: file:line (src/a.py:12, a.ts:3-9) or a test reference.
+EVIDENCE = re.compile(r"[\w./\\-]+\.\w+:\d+|\btests?[/\\:_.]|\btest_\w+|\w+\.(test|spec)\.\w+|\b[\w/.-]*_test\.\w+|::\w+", re.I)
+
+
+def rejected_without_evidence(body):
+    """Finding numbers whose disposition is 'rejected' but whose Reason cites no file:line or test."""
+    return [f["num"] for f in findings(body) if f["disposition"] == "rejected" and not EVIDENCE.search(f["reason"])]
+
+
+def file_sha(path):
+    """sha256 of a file with line endings normalized (CRLF == LF), hex."""
+    import hashlib
+    with open(path, "rb") as fh:
+        return hashlib.sha256(fh.read().replace(b"\r\n", b"\n")).hexdigest()
+
+
+def design_changed_after_approval(repo, rel_path, rows):
+    """Problem string if a design doc changed after its latest CP-A approval row, else None.
+    If the row's decision carries 'sha256:<hex prefix>' the file content is compared (exact);
+    otherwise git: any commit touching the file with a commit date after the approval date
+    (uncommitted edits are not flagged; see PROCESS.md 'Design changes after CP-A')."""
+    mine = [r for r in rows if rel_path in r["paths"] and r["cp"].upper().startswith("CP-A")
+            and re.search(r"approved|accepted", r["decision"]) and not re.search(r"reject", r["decision"])]
+    if not mine:
+        return None
+    last = max(mine, key=lambda r: r["date"])
+    m = re.search(r"sha256:([0-9a-f]{7,64})", last["decision"])
+    if m:
+        if not file_sha(os.path.join(repo, rel_path)).startswith(m.group(1)):
+            return "content differs from the sha256 recorded at CP-A approval (%s)" % last["date"]
+        return None
+    d = re.match(r"\d{4}-\d{2}-\d{2}", last["date"])
+    if not d:
+        return None
+    try:
+        out = subprocess.run(["git", "-C", repo, "log", "--format=%cs", "--", rel_path],
+                             capture_output=True, text=True, timeout=10)
+    except Exception:
+        return None
+    later = [x for x in out.stdout.split() if x > d.group(0)] if out.returncode == 0 else []
+    if later:
+        return "committed changes after CP-A approval on %s (latest commit %s)" % (d.group(0), later[0])
+    return None
 
 
 WORKING_AGREEMENTS = ["implementer", "planner", "cross_review", "push_permission", "board"]

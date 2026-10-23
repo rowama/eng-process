@@ -22,4 +22,7 @@ design: <path to design doc>
 ## Rollback, partial deploy, feature flags
 ## Observability
 ## Security (STRIDE quick pass)
+## Owner legibility (standing question)
+<!-- Can the owner judge this frontend's behaviour and code? If not, what reduces that gap?
+     (demo script, screenshots, simpler stack, opt-in checks from .eng/templates/ci-checklist.md). n.a. if no UI. -->
 ## ADRs

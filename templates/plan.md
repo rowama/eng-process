@@ -49,6 +49,10 @@ Slice card: <thoughts/shared/slices/...md>
 ## Phase 2: <next vertical slice>
 (same structure)
 
+## Demo script
+<!-- 3-6 steps Rob can follow to see the result working (commands, URLs, clicks, expected output). Short. -->
+1. 
+
 ## Testing Strategy
 - Unit:
 - Integration:

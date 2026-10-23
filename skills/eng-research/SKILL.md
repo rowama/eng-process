@@ -18,7 +18,7 @@ Session: standard Start/Finish per `.eng/PROCESS.md` section 8 (kit: `PROCESS.md
 2. Spawn parallel sub-tasks to locate files, analyze components, find patterns; each returns paths + file:line notes.
 3. Read the key files yourself, fully.
 4. Write findings: what exists, where, how data flows. **Only document; no critique, no proposals.**
-5. Fill git_commit/branch so staleness is detectable.
+5. Fill git_commit/branch so staleness is detectable. For external sources, add the provenance block (source, pinned commit or read date, verified/unverified; PROCESS.md 12).
 
 ## Exit criteria
 Every question answered or listed open; every claim has a file:line; no recommendations.

@@ -18,7 +18,7 @@ Python 3.9+, stdlib only, no dependencies. Install once per machine:
 ```bash
 pipx install git+https://github.com/rowama/eng-process        # or: uv tool install git+https://github.com/rowama/eng-process
 pipx upgrade eng-process                                        # or: uv tool upgrade eng-process
-pipx install git+https://github.com/rowama/eng-process@v2.3.2  # pin a release tag
+pipx install git+https://github.com/rowama/eng-process@v2.4.0  # pin a release tag
 ```
 Then, from a repo root:
 ```bash
@@ -59,6 +59,7 @@ Flow: `triage → discover (CP-A) → scope → research (CP-R) → architecture
 - `eng-status <repo_dir>`: phase, triage, working agreements, slice, approvals, readiness, next action, blockers, latest artifacts, slice board, check result, and the ready-to-implement message when applicable.
 - `eng-new <type> <slug> [--repo D] [--title T] [--agent N] [--phase P]`: create from template; ADRs numbered `NNNN`; handoffs `YYYY-MM-DD_HH-MM-SS_slug.md`; `changelog` inserts a complete entry under `## [Unreleased]` (`--summary`, `--section`).
 - `eng-run <role> ...` (v2.3): run an agent non-interactively from the repo root: `plan-review <plan>`, `implement <plan> <slice-id>`, `code-review <slice-id | --base REF>`. Runner per role from `.eng/runners.toml` (project-owned; defaults implement=claude, reviews=codex), override with `ENG_RUNNER_<ROLE>` or `--runner`. Adapters: `claude`, `codex`, generic `command`. Every run writes `thoughts/shared/runs/<date>-<role>-<target>.md`; reviews also write a review-findings file in `thoughts/shared/verification/` (never terminal-only). Refuses self-review unless `--allow-self-review`; `--dry-run` prints the exact command. Bots (Chet, Dave) may run it on Rob's PC only with Rob's approval.
+- v2.4 learning loop (PROCESS.md §12): ADR/retro predictions scored in eng-retro, evidence required to reject a finding, research provenance headers (SOURCES.md), kit lessons (`LESSONS.md`, `templates/kit-lesson.md`), design-adoption tracking in process feedback, opt-in CI checklist (`templates/ci-checklist.md`). New eng-check warnings (warn-only until v2.5.0): rejected-no-evidence, draft-before-design, design-changed-after-approval.
 Set `ENG_AGENT` to avoid repeating `--agent`.
 
 ## Test

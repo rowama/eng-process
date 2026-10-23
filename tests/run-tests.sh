@@ -48,7 +48,7 @@ M="$T/med"; cp -r "$G" "$M"; (cd "$M"
   printf '| 2026-01-01 | CP-A | %s | approved |\n| 2026-01-02 | CP-C | %s | approved |\n' "$D" "$P" >> PROJECT_STATE.md
   sed -i "s/^status: draft.*/status: approved/" "$R"; printf '| 2026-01-02 | CP-R | %s | approved |\n' "$R" >> PROJECT_STATE.md
   eng-new plan-review demo --agent test >/dev/null; V=$(ls thoughts/shared/verification/*-plan-review.md)
-  printf '| 1 | high | plan 2 | missing auth test | fixed | added to slice 1 |\n| 2 | medium | plan 3 | order | rejected | contract first is intended |\n| 3 | low | plan | naming | accepted-risk | Rob 2026-01-02 |\n' > /tmp/rows
+  printf '| 1 | high | plan 2 | missing auth test | fixed | added to slice 1 |\n| 2 | medium | plan 3 | order | rejected | contract first is intended, see tests/test_contract.py |\n| 3 | low | plan | naming | accepted-risk | Rob 2026-01-02 |\n' > /tmp/rows
   sed -i "/^|---|---|---|---|---|---|/r /tmp/rows" "$V"; sed -i "s#^plan_review: .*#plan_review: $V#" "$P")
 expect 0 "eng-check consistent medium project at implement" eng-check "$M"
 expect 0 "eng-status prints ready-to-implement message" bash -c "eng-status '$M' | grep -q 'Run eng-resume, then eng-implement-slice for SLICE-'"
@@ -102,7 +102,7 @@ brkm plan-review-missing  'sed -i "s/^plan_review: .*/plan_review: none/" though
 brkm plan-review-high-open 'sed -i "s/| fixed | added to slice 1 |/| open | |/" thoughts/shared/verification/*-plan-review.md'
 brkm plan-review-critical-open 'sed -i "s/| high | plan 2 | missing auth test | fixed |/| critical | plan 2 | missing auth test | open |/" thoughts/shared/verification/*-plan-review.md'
 brkm accepted-risk-no-rob 'sed -i "s/| Rob 2026-01-02 |/| seems fine |/" thoughts/shared/verification/*-plan-review.md'
-brkm rejected-no-reason   'sed -i "s/| contract first is intended |/| |/" thoughts/shared/verification/*-plan-review.md'
+brkm rejected-no-reason   'sed -i "s/| contract first is intended, see tests\/test_contract.py |/| |/" thoughts/shared/verification/*-plan-review.md'
 brkm slice-in-progress-no-review 'sed -i "s/^plan_review: .*/plan_review: none/" thoughts/shared/plans/*.md; sed -i "s/^phase: implement/phase: plan/" PROJECT_STATE.md; sed -i "s/^status: todo.*/status: in-progress/" thoughts/shared/slices/*.md'
 brk pseudo-approval    'sed -i "s/^status: draft.*/status: approved-for-review/" thoughts/shared/research/*.md'
 brk no-vendored-bin   'rm -r .eng/bin'
@@ -133,5 +133,6 @@ brk bad-pending-format 'sed -i "s#^pending_approvals: \[\]#pending_approvals: [a
 brk input-not-approved 'sed -i "s/^phase: discover/phase: implement/; s/^triage: .*/triage: medium/" PROJECT_STATE.md; sed -i "s/^status: draft.*/status: input/" thoughts/shared/plans/*.md docs/design/*.md'
 
 . "$KIT/tests/v230-tests.sh"
+. "$KIT/tests/v240-tests.sh"
 
 n=$(grep -c "^PASS" "$LOG"); rm -rf "$T"; echo; [ $fails = 0 ] && echo "ALL TESTS PASSED ($n checks)" || { echo "$fails TEST(S) FAILED"; exit 1; }

@@ -21,8 +21,9 @@ Session: standard Start/Finish per `.eng/PROCESS.md` section 8 (kit: `PROCESS.md
 3. For each error: trigger, handler, user-visible result, test. No silent failures.
 4. Plan rollback, partial deploy, feature flags; observability is in scope.
 5. Quick STRIDE pass for security-relevant changes.
-6. One ADR per durable choice, status `proposed`. Use `deferred` (+ `revisit:`) for consciously postponed decisions.
-7. **Cross-model review (advisory, large work):** ask Rob to run Codex on the architecture doc in Claude Code (`/codex`, i.e. `codex exec "review <path> for gaps, risks, contradictions" -o thoughts/shared/verification/<date>-<slug>-review.md`). Add the findings front matter + table above the raw output in that file, then answer each one in the doc or the findings file. Not a gate.
+6. **Standing question (always, for any UI):** *Can the owner judge this frontend's behaviour and code? If not, what reduces that gap?* (e.g. demo script, storybook/screenshots, simpler stack, opt-in CI checks from `.eng/templates/ci-checklist.md`). Answer it in the doc.
+7. One ADR per durable choice, status `proposed`, with Expected outcome / Check date / What would prove it wrong. Use `deferred` (+ `revisit:`) for consciously postponed decisions.
+8. **Cross-model review (advisory, large work):** ask Rob to run Codex on the architecture doc in Claude Code (`/codex`, i.e. `codex exec "review <path> for gaps, risks, contradictions" -o thoughts/shared/verification/<date>-<slug>-review.md`). Add the findings front matter + table above the raw output in that file, then answer each one in the doc or the findings file. Not a gate.
 
 ## Exit criteria
 All checklist areas addressed or n.a. with reason; ADRs drafted; review findings answered (large).

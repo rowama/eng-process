@@ -25,7 +25,11 @@ Checks:
      implement/verify/ship, the plan's 'plan_review:' must point to a review-findings file with no
      open critical/high finding; accepted-risk needs Rob's approval, rejected needs a reason.
   12. Approvals written outside the Approval log (struck-through ~~...~~ text and history sections
-     ignored); warn-only until v2.4.0 (new checks warn for one version), --strict makes it an error.
+     ignored); was warn-only in 2.3.x, an error from v2.4.0.
+  14. Warn-only until v2.5.0 (--strict: error): a rejected review finding cites no evidence
+     (file:line or test reference); plan/slice drafts exist while no design doc is approved (CP-A;
+     not for triage small); a design doc changed after its CP-A approval without a newer approval
+     row (sha256:<hex> in the decision cell, else git commit dates; never during phase discover).
   13. Pseudo-approval statuses (e.g. approved-for-review) and docs without id fail cleanly.
 Warnings: [NEEDS CLARIFICATION] in approved designs, missing handoff, missing working-agreement fields."""
 import os, sys, re, glob, argparse
@@ -158,6 +162,28 @@ _stray = W if L.warn_only("stray-approval", a.strict) else E
 _note = " [warn-only until v%s; --strict makes it an error]" % L.WARN_ONLY_UNTIL["stray-approval"] if _stray is W else ""
 for s_ in L.stray_approvals(sbody):
     _stray(sp, "approval written outside the Approval log table (add a table row '| date | CP-X | path | decision |' instead): " + s_[:100] + _note)
+
+# v2.4.0 warn-only checks (become errors at WARN_ONLY_UNTIL; --strict now)
+def _wo(check):
+    f = W if L.warn_only(check, a.strict) else E
+    note = " [warn-only until v%s; --strict makes it an error]" % L.WARN_ONLY_UNTIL[check] if f is W else ""
+    return lambda r, m: f(r, m + note)
+_rej = _wo("rejected-no-evidence")
+for r, (fm, body) in sorted(arts.items()):
+    if fm.get("type") == "review-findings":
+        for n in L.rejected_without_evidence(body):
+            _rej(r, "finding %s rejected without evidence: cite file:line or a test in Reason (PROCESS.md 'Rejecting a finding')" % n)
+if triage != "small":
+    drafts = sorted(r for r, (fm, _) in arts.items() if fm.get("type") in ("plan", "slice"))
+    if drafts and not any(fm.get("type") == "design" and fm.get("status") == "approved" for fm, _ in arts.values()):
+        _wo("draft-before-design")(sp, "plan/slice drafts exist but no design doc is approved (CP-A): %s - get CP-A first" % ", ".join(drafts[:3]) + (" ..." if len(drafts) > 3 else ""))
+if phase != "discover":
+    _rows = L.approval_log(sbody)
+    for r, (fm, _) in sorted(arts.items()):
+        if fm.get("type") == "design" and fm.get("status") == "approved":
+            why = L.design_changed_after_approval(repo, r, _rows)
+            if why:
+                _wo("design-changed-after-approval")(r, "design doc %s without re-approval - log a new CP-A row (or set status in-review)" % why)
 
 # slices / WIP
 slices = {r: v for r, v in arts.items() if v[0].get("type") == "slice"}

@@ -1,5 +1,18 @@
 # Changelog (eng-process kit)
 
+## 2.4.0 - 2026-10-23
+### Added
+- Predictions: ADR template gets Expected outcome / Check date / What would prove it wrong / Score; retro template records predictions made in consultations and scores past ones right/wrong/unclear (eng-retro step 2).
+- Review evidence: rejecting a finding requires evidence (file:line or a test reference) in Reason. Retro gets a review hit-rate line (accepted vs rejected, real bugs caught).
+- Research provenance convention (SOURCES.md, PROCESS.md §12): per-file `<!-- provenance -->` header (source, commit or date, verified/unverified), pinned src commits, staleness diff when a consultation relies on research, web snapshot only for decision-driving claims at re-derivation. eng-research step 5.
+- Frontend legibility: architecture template/skill standing question "Can the owner judge this frontend's behaviour and code? If not, what reduces that gap?"; plan template Demo script section; opt-in size-dependent `templates/ci-checklist.md` (lint, typecheck, axe, bundle budget, Lighthouse), not enforced.
+- Kit lessons: `templates/kit-lesson.md` ("when X, do Y, because Z", origin, confirmation count, status hypothesis until confirmed by a second project, Rob approves) and `LESSONS.md`; eng-retro proposes lessons.
+- Retro: "Which step felt like waste?" and rough time per phase.
+- Process feedback: Design adoption table (adopted/skipped + reason; informed owner skip not counted; two non-safety skips -> redesign flag; any safety-gate skip (personal data, mandatory plan review) -> escalate to Rob).
+- eng-check warnings (warn-only until v2.5.0, `--strict` makes them errors): `rejected-no-evidence`; `draft-before-design` (plan/slice drafts while no design doc is CP-A approved; not for small triage); `design-changed-after-approval` (design doc changed after its latest CP-A row: `sha256:<prefix>` in the decision cell is compared with the file, otherwise git commit dates after the approval date; not during Discover).
+### Changed (behaviour)
+- `stray-approval` (warn-only in 2.3.x) is now an error.
+
 ## 2.3.2 - 2026-10-23
 ### Fixed
 - eng-run: absolute plan paths are resolved through symlinks before making them repo-relative (macOS /var -> /private/var).

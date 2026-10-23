@@ -16,7 +16,8 @@ command: <exact command run from the repo root, e.g. codex exec "..." -o <this f
 <!-- Plan reviews gate implementation (medium/large): .eng/bin/eng-check fails while any critical/high row is open or
      lacks a valid disposition. Slice and architecture reviews are advisory.
      Severity: critical | high | medium | low.
-     Disposition: open | fixed (where/commit) | accepted-risk (ONLY with Rob's approval: name it, e.g. "Rob 2026-10-23") | rejected (reason required). -->
+     Disposition: open | fixed (where/commit) | accepted-risk (ONLY with Rob's approval: name it, e.g. "Rob 2026-10-23") | rejected (reason + EVIDENCE required: a file:line such as src/auth.py:42, or a test reference such as
+     tests/test_auth.py::test_expired_token; eng-check warns when a rejected row cites neither). -->
 
 ## Findings
 | # | Severity | Location | Finding | Disposition | Reason / approval |

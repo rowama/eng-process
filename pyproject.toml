@@ -42,6 +42,7 @@ packages = ["src/eng_process"]
 "PROCESS.md" = "eng_process/kit/PROCESS.md"
 "VERSION" = "eng_process/kit/VERSION"
 "CHANGELOG.md" = "eng_process/kit/CHANGELOG.md"
+"LESSONS.md" = "eng_process/kit/LESSONS.md"
 
 [tool.hatch.build.targets.sdist]
-include = ["/bin", "/skills", "/templates", "/src", "/tests", "/PROCESS.md", "/VERSION", "/CHANGELOG.md", "/README.md", "/SOURCES.md", "/LICENSE", "/pyproject.toml"]
+include = ["/bin", "/skills", "/templates", "/src", "/tests", "/PROCESS.md", "/VERSION", "/CHANGELOG.md", "/README.md", "/SOURCES.md", "/LESSONS.md", "/LICENSE", "/pyproject.toml"]

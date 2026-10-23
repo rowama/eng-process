@@ -22,6 +22,19 @@ Fetched or read 2026-10-19. Local clones are under `/workspace/research/src`.
 - The Claude Code best-practices content was read at its redirect target, which is a docs page rather than the original engineering post.
 - The HumanLayer repo README says much of its code is deprecated. The `.claude/commands` files were used as reference prompts, not as maintained products.
 
+## Research provenance convention (v2.4)
+Every research file (kit research in `/workspace/research/*.md`, project research in `thoughts/shared/research/`) starts with a provenance block:
+
+```
+<!-- provenance
+- source: <url or repo> | commit: <pinned sha> or date: <YYYY-MM-DD read> | verified | unverified
+-->
+```
+- **Pin** cloned source repos (`/workspace/research/src/*`) to a commit; the pins are listed in `/workspace/research/README.md` and in each file's header.
+- **Staleness diff** before a consultation or decision relies on the research: `git -C src/<repo> fetch && git -C src/<repo> log --oneline <pin>..origin/HEAD -- <paths>`; for web sources, re-read. Note the result in the consultation notes.
+- **Snapshot** a web source (save a dated copy) only when a decision-driving claim rests on it, at re-derivation time.
+- `verified` = the author checked the claim against the pinned source; `unverified` = summary from memory, secondary source, or not re-checked.
+
 ## v2 additions
 - Friction found in the kit's first real adoption (generalized; no project content kept) and the owner's standing working agreements: implementer/planner split, advisory cross-model review, optional board, process-feedback pass. See CHANGELOG.md.
 - OpenAI Codex CLI (`codex review`, `codex exec`; `npm install -g @openai/codex`, `codex login`) as invoked by gstack's `/codex` skill. Not re-verified against the current Codex docs on this date. Check the flags if the CLI changes.

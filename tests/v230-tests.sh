@@ -103,12 +103,12 @@ expect 0 "eng-status mentions eng-run for the plan review" bash -c "cd '$T/cx' 2
 
 # B1. stray approvals: fewer false positives, warn-only for one version
 expect 0 "stray check ignores struck-through and history lines" bash -c "cp -r '$G' '$T/st' && cd '$T/st' && sed -i 's/^## Next action/## Next action\n~~CP-R~~ approved 2026-10-22\n- ~~CP-A approved 2026-10-01~~ done/' PROJECT_STATE.md && printf '\n## History\nCP-B approved 2026-09-01 by Rob\n' >> PROJECT_STATE.md && ! eng-check --strict . | grep -q 'outside the Approval log'"
-expect 0 "real stray approval is warn-only (exit 0, WARN)" bash -c "cp -r '$G' '$T/st2' && cd '$T/st2' && sed -i 's/^## Next action/## Next action\nCP-C approved 2026-01-02 by Rob/' PROJECT_STATE.md && eng-check . | grep -q '^WARN .*outside the Approval log.*warn-only until v2.4.0'"
+expect 0 "real stray approval is an error from v2.4.0 (was warn-only in 2.3.x)" bash -c "cp -r '$G' '$T/st2' && cd '$T/st2' && sed -i 's/^## Next action/## Next action\nCP-C approved 2026-01-02 by Rob/' PROJECT_STATE.md && ! eng-check . >/dev/null && eng-check . | grep -q '^ERROR .*outside the Approval log'"
 expect 1 "real stray approval errors with --strict" bash -c "cd '$T/st2' && eng-check --strict ."
 expect 1 "table row outside log errors with --strict" bash -c "cp -r '$G' '$T/st3' && cd '$T/st3' && sed -i 's/^## Next action/## Next action\n| 2026-01-02 | CP-A | docs\/design\/x.md | approved |/' PROJECT_STATE.md && eng-check --strict ."
 expect 0 "warn-only expires at the listed version" python3 -c "
 import sys; sys.path.insert(0,'$KIT/bin'); import englib as L
-assert L.warn_only('stray-approval') and not L.warn_only('stray-approval', strict=True)
+L.KIT_VERSION = '2.3.2'; assert L.warn_only('stray-approval') and not L.warn_only('stray-approval', strict=True)
 L.KIT_VERSION = '2.4.0'; assert not L.warn_only('stray-approval')"
 
 # B2. stale-section report names the section and shows a diff

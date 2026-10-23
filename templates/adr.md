@@ -27,3 +27,9 @@ We will <full sentences, active voice>.
 
 ## Consequences
 <resulting context: positive, negative, neutral>
+
+## Prediction (scored in a later eng-retro)
+- Expected outcome: <what we expect to observe if this decision is right; measurable where possible>
+- Check date: <YYYY-MM-DD or trigger, e.g. "after slice 3 ships">
+- What would prove it wrong: <the observation that would make us revisit>
+- Score: unscored    <!-- eng-retro sets: right | wrong | unclear (YYYY-MM-DD, one-line evidence) -->
