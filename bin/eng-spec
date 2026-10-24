@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+"""eng-spec <init|lock|status|trace> [repo]   executable specs (kit v2.5, Farley four-layer model)
+
+  init    opt-in scaffold: copy .eng/templates/acceptance/ to tests/acceptance/ (never overwrites) and set
+          'acceptance: executable-specs' in PROJECT_STATE front matter.
+  lock    write tests/acceptance/spec-lock.json (spec file hashes, DSL public interface, DSL assertion-step
+          bodies) and print the Approval log row to record at CP-C. Run when the specs are ready for CP-C.
+  status  compare the tree with the lock; exit 0 always (eng-check reports the same as warnings).
+  trace   REQ -> spec table (approved design docs vs @pytest.mark.req tags) for the verification report.
+
+Locked: tests/acceptance/specs/** and the DSL's public interface (names, parameters, docstrings).
+Flagged: bodies of DSL assertion steps (names starting assert_/then_/expect_/check_/verify_).
+Free: drivers (tests/acceptance/drivers/), private DSL helpers (_name), conftest.py."""
+import os, sys, re, shutil, argparse
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import englib as L
+
+ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+ap.add_argument("cmd", choices=["init", "lock", "status", "trace"])
+ap.add_argument("repo", nargs="?", default=".")
+a = ap.parse_args()
+repo = os.path.abspath(a.repo)
+sp = os.path.join(repo, "PROJECT_STATE.md")
+state, sbody = L.read_front_matter(sp) if os.path.isfile(sp) else ({}, "")
+state = state or {}
+
+if a.cmd == "init":
+    src = None
+    for d in (os.path.join(repo, ".eng", "templates", "acceptance"), os.path.join(L.KIT_DIR, "templates", "acceptance")):
+        if os.path.isdir(d):
+            src = d; break
+    if not src:
+        sys.exit("eng-spec: scaffold templates missing (run <kit>/bin/eng-init <repo> --upgrade)")
+    for d, dirs, files in os.walk(src):
+        dirs[:] = [x for x in dirs if not x.startswith("__")]
+        for f in sorted(files):
+            if f.endswith((".pyc", ".pyo")):
+                continue
+            rel = os.path.relpath(os.path.join(d, f), src)
+            dst = os.path.join(repo, L.ACC_DIR, rel)
+            if os.path.exists(dst):
+                print("keep    " + L.posix(os.path.relpath(dst, repo))); continue
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            data = open(os.path.join(d, f), "rb").read().replace(b"\r\n", b"\n")
+            open(dst, "wb").write(data)
+            print("create  " + L.posix(os.path.relpath(dst, repo)))
+    if os.path.isfile(sp):
+        txt = open(sp, encoding="utf-8").read()
+        if not re.search(r"(?m)^acceptance:", txt[:txt.find("\n---", 4)]):
+            end = txt.find("\n---", 4)
+            txt = txt[:end] + "\nacceptance: executable-specs   # v2.5: tests/acceptance/, see PROCESS.md 13" + txt[end:]
+            open(sp, "w", encoding="utf-8", newline="\n").write(txt)
+            print("update  PROJECT_STATE.md (acceptance: executable-specs)")
+    print("Next: write specs in domain language (tests/acceptance/specs/), then 'eng-spec lock' before CP-C.")
+    sys.exit(0)
+
+snap = L.spec_snapshot(repo)
+if a.cmd == "lock":
+    if not snap["specs"]:
+        sys.exit("eng-spec: no specs under %s" % L.SPEC_DIR)
+    p = os.path.join(repo, L.LOCK_FILE)
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    open(p, "w", encoding="utf-8", newline="\n").write(L.lock_text(snap))
+    h = L.file_sha(p)[:16]
+    print("wrote %s: %d spec file(s), %d DSL symbol(s), %d assertion step(s)" % (L.LOCK_FILE, len(snap["specs"]), len(snap["dsl_interface"]), len(snap["dsl_assertions"])))
+    print("After Rob approves, add this Approval log row (with the plan path):")
+    print("| %s | CP-C | <plan.md> | approved speclock sha256:%s |" % (L.now().strftime("%Y-%m-%d"), h))
+    sys.exit(0)
+
+if a.cmd == "status":
+    lock = L.read_lock(repo)
+    if lock is None:
+        print("no lock (%s); run 'eng-spec lock' when the specs are ready for CP-C" % L.LOCK_FILE); sys.exit(0)
+    st, d = L.speclock_approved(repo, L.approval_log(sbody))
+    print("lock approval: %s%s" % (st, (" (%s)" % d) if d else ""))
+    dd = L.diff_snap(lock, snap)
+    for k, label in (("specs", "locked spec"), ("dsl_interface", "DSL interface"), ("dsl_assertions", "DSL assertion step")):
+        for x in dd[k]:
+            print("%s %s" % (label, x))
+    if not any(dd.values()):
+        print("specs and DSL interface match the lock")
+    sys.exit(0)
+
+# trace
+tags = L.spec_req_tags(repo)
+reqs = []
+for r, (fm, body) in sorted(L.load_artifacts(repo).items()):
+    fm = fm or {}
+    if fm.get("type") == "design" and fm.get("status") == "approved":
+        reqs += [(q, r) for q in L.design_req_ids(body)]
+print("| REQ | design doc | specs | result |\n|---|---|---|---|")
+for q, r in reqs:
+    print("| %s | %s | %s | <pass/fail from the full suite run> |" % (q, r, ", ".join(sorted(set(tags.get(q, [])))) or "MISSING"))
+for q in sorted(set(tags) - {x for x, _ in reqs}):
+    print("| %s | (not in an approved design) | %s | |" % (q, ", ".join(sorted(set(tags[q])))))

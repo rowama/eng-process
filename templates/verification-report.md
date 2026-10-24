@@ -18,6 +18,12 @@ git_commit: {{COMMIT}}
 | Command | Exit | Notes |
 |---|---|---|
 
+## Executable specs (v2.5; paste `eng-spec trace` and fill results from the re-run; "n/a - small" otherwise)
+| REQ | design doc | specs | result |
+|---|---|---|---|
+
+Spec lock: <`eng-spec status` output: clean | changes + Rob's re-approval row>
+
 ## Code review findings
 <matches plan? deviations, edge cases, error handling, security, weakened tests/timeouts/suppressions (name each)>
 

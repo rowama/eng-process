@@ -16,6 +16,7 @@ COMMANDS = {
     "check": ("eng-check", [], True, "validate process artifacts (eng-check)"),
     "status": ("eng-status", [], True, "one-screen status (eng-status)"),
     "new": ("eng-new", [], False, "create an artifact from a template (eng-new)"),
+    "spec": ("eng-spec", [], False, "executable specs: init|lock|status|trace (eng-spec)"),
     "run": ("eng-run", [], False, "run an agent role headless (eng-run)"),
 }
 

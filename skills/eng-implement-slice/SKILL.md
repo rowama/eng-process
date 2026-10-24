@@ -20,6 +20,7 @@ The PROJECT_STATE `implementer` (default Claude Code on Rob's PC). If you are th
 ## Steps
 1. `.eng/bin/eng-check .` must pass. Set slice `in-progress`, PROJECT_STATE `active_slice`.
 2. Write a failing test for the slice behavior; then the smallest change that passes.
+2a. **Executable specs (v2.5):** before step 2, run the slice card's `specs:` (`pytest <node>`) and confirm they fail for the right reason. Make them pass by changing code, drivers, or private DSL helpers. **Never edit** locked specs (`tests/acceptance/specs/`) or the DSL public interface (names, parameters, docstrings): if one looks wrong, stop and report "Issue in Phase N: spec <node> - <why>". A change to a DSL assertion step body must be named in the handoff so the code review covers it. `eng-check` and `eng-run implement` flag these edits for Rob (warnings, not failures).
 3. If the code doesn't match the plan: stop and report "Issue in Phase N: expected X, found Y" in slice Blockers. Don't improvise.
 4. Run the phase's Automated Verification; fix until it passes. Never weaken a test/gate.
 5. Bug: no fix without root cause; after 3 failed attempts stop and hand off.

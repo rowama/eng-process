@@ -173,7 +173,7 @@ for r, (fm, body) in sorted(arts.items()):
     if fm.get("type") == "review-findings":
         for n in L.rejected_without_evidence(body):
             _rej(r, "finding %s rejected without evidence: cite file:line or a test in Reason (PROCESS.md 'Rejecting a finding')" % n)
-if triage != "small":
+if triage not in ("small", "unset"):   # before triage the size is unknown (small needs no design)
     drafts = sorted(r for r, (fm, _) in arts.items() if fm.get("type") in ("plan", "slice"))
     if drafts and not any(fm.get("type") == "design" and fm.get("status") == "approved" for fm, _ in arts.values()):
         _wo("draft-before-design")(sp, "plan/slice drafts exist but no design doc is approved (CP-A): %s - get CP-A first" % ", ".join(drafts[:3]) + (" ..." if len(drafts) > 3 else ""))
@@ -184,6 +184,49 @@ if phase != "discover":
             why = L.design_changed_after_approval(repo, r, _rows)
             if why:
                 _wo("design-changed-after-approval")(r, "design doc %s without re-approval - log a new CP-A row (or set status in-review)" % why)
+
+# v2.5 executable specs (warn-only until v2.6.0; PROCESS.md 13). Opt-in: 'acceptance: executable-specs' or a spec lock.
+if L.acceptance_enabled(repo, state) and triage != "small":
+    _rows = L.approval_log(sbody)
+    lock = L.read_lock(repo)
+    st, _d = L.speclock_approved(repo, _rows)
+    if lock is None and phase in L.IMPL_PHASES and triage in ("medium", "large"):
+        _wo("speclock-not-approved")(L.LOCK_FILE, "executable specs enabled but no spec lock - run 'eng-spec lock .' and record 'approved speclock sha256:<hex>' at CP-C")
+    if lock is not None:
+        if st != "ok" and (phase in L.IMPL_PHASES or st == "mismatch"):
+            _wo("speclock-not-approved")(L.LOCK_FILE, ("spec lock differs from the speclock sha256 approved on %s" % _d if st == "mismatch" else
+                "spec lock has no approved Approval log row") + " - get Rob's CP-C approval: '| date | CP-C | <plan.md> | approved speclock sha256:<hex> |' (eng-spec lock prints it)")
+        dd = L.diff_snap(lock, L.spec_snapshot(repo))
+        if dd["specs"]:
+            _wo("spec-changed-without-approval")(L.SPEC_DIR, "locked executable specs changed since the lock (%s) - flag for Rob: re-approve at CP-C (eng-spec lock, new Approval log row) or revert" % "; ".join(dd["specs"][:5]))
+        if dd["dsl_interface"]:
+            _wo("dsl-interface-changed")(L.ACC_DIR, "locked DSL public interface changed (names/parameters/docstrings: %s) - flag for Rob: re-approve or revert" % "; ".join(dd["dsl_interface"][:5]))
+        if dd["dsl_assertions"]:
+            revs = " ".join(b for fm_, b in arts.values() if (fm_ or {}).get("type") == "review-findings")
+            unreviewed = [x for x in dd["dsl_assertions"] if x.split("::")[-1].split(".")[-1] not in revs]
+            if unreviewed:
+                _wo("dsl-assertion-changed")(L.ACC_DIR, "DSL assertion step body changed (%s) - the Codex code review must cover it (name the step in the review findings)" % "; ".join(unreviewed[:5]))
+    if phase in ("plan",) + tuple(L.IMPL_PHASES) and triage in ("medium", "large"):
+        for r, (fm, _) in sorted(arts.items()):
+            if (fm or {}).get("type") != "slice" or fm.get("status") not in ("todo", "in-progress", "review"):
+                continue
+            sv = fm.get("specs")
+            if not sv or sv == [] or (isinstance(sv, str) and sv.strip() in ("", "[]")):
+                _wo("slice-without-spec")(r, "slice names no executable spec - list 'specs: [tests/acceptance/specs/test_x.py::test_y]' or 'specs: none - <reason>'")
+                continue
+            if isinstance(sv, str) and sv.strip().lower().startswith("none"):
+                continue
+            for node in (sv if isinstance(sv, list) else [sv]):
+                prob = L.spec_node_problem(repo, node)
+                if prob:
+                    _wo("spec-unknown-node")(r, prob)
+    if phase in ("verify", "ship"):
+        tags = L.spec_req_tags(repo)
+        for r, (fm, body) in sorted(arts.items()):
+            if (fm or {}).get("type") == "design" and fm.get("status") == "approved":
+                miss = [q for q in L.design_req_ids(body) if q not in tags]
+                if miss:
+                    _wo("req-without-spec")(r, "requirements with no executable spec (@pytest.mark.req): %s - add specs or record why in the verification report" % ", ".join(miss))
 
 # slices / WIP
 slices = {r: v for r, v in arts.items() if v[0].get("type") == "slice"}

@@ -14,6 +14,8 @@ if "-o" in a and not os.environ.get("FAKE_NO_O"):
     open(a[a.index("-o") + 1], "w").write(out)
 if "--out" in a:
     open(a[a.index("--out") + 1], "w").write("generic tool result\n" + open(a[a.index("--in") + 1]).read()[:40])
+if os.environ.get("FAKE_TOUCH"):   # v2.5: simulate an agent editing a file
+    open(os.environ["FAKE_TOUCH"], "a").write("\n# edited by agent\n")
 print(os.environ.get("FAKE_STDOUT", "working... done"))
 if "-o" not in a and "--out" not in a and not os.environ.get("FAKE_STDOUT"):
     print(out)
@@ -69,7 +71,7 @@ PR="$T/pr"; cp -r "$RN" "$PR"; (cd "$PR" && sed -i 's/^plan_review: .*/plan_revi
 expect 0 "plan-review (fake codex) writes run log + review file, links plan_review" bash -c "cd '$PR' && FAKE_OUT='1. [high] plan Phase 2 - missing auth test - add one
 2. [low] naming - x | y' python3 .eng/bin/eng-run plan-review $PL && R=\$(ls thoughts/shared/runs/*-plan-review-*.md) && V=\$(ls thoughts/shared/verification/\$(date +%F)-*-plan-review.md) && grep -q \"^plan_review: \$V\" $PL && grep -q '^| 1 | high | plan Phase 2 | missing auth test - add one | open |' \$V && grep -q '^## Prompt' \$R && grep -q '^## Output' \$R && grep -q '^## Summary' \$R && grep -q 'codex progress\\|working' \$R"
 expect 0 "plan review with open high finding fails eng-check gate" bash -c "cd '$PR' && ! eng-check . >/dev/null && eng-check . | grep -q 'high finding still open'"
-expect 0 "dispositioning the finding passes the gate" bash -c "cd '$PR' && V=\$(ls thoughts/shared/verification/\$(date +%F)-*-plan-review.md) && sed -i 's/| missing auth test - add one | open | |/| missing auth test - add one | fixed | slice 1 |/; s/| x \\/ y | open | |/| x \\/ y | rejected | naming is fine |/' \$V && eng-check ."
+expect 0 "dispositioning the finding passes the gate" bash -c "cd '$PR' && V=\$(ls thoughts/shared/verification/\$(date +%F)-*-plan-review.md) && sed -i 's/| missing auth test - add one | open | |/| missing auth test - add one | fixed | slice 1 |/; s/| x \\/ y | open | |/| x \\/ y | rejected | naming is fine, see test_naming |/' \$V && eng-check ."
 expect 0 "No findings. review passes gate; existing plan_review kept" bash -c "cp -r '$RN' '$T/nf' && cd '$T/nf' && sed -i 's/^plan_review: .*/plan_review: none/' $PL && FAKE_OUT='No findings.' python3 .eng/bin/eng-run plan-review $PL >/dev/null && eng-check . && FAKE_OUT='No findings.' python3 .eng/bin/eng-run plan-review $PL | grep -q 'already thoughts/shared/verification'"
 expect 0 "second run same day gets a new file (no overwrite)" bash -c "cd '$T/nf' && [ \$(ls thoughts/shared/runs/*-plan-review-*.md | wc -l) = 2 ] && [ \$(grep -l '^owner_agent: eng-run' thoughts/shared/verification/*.md | wc -l) = 2 ]"
 expect 0 "review written from stdout when codex writes no -o file (never terminal only)" bash -c "cp -r '$RN' '$T/no' && cd '$T/no' && FAKE_NO_O=1 FAKE_STDOUT='1. [low] x - y' python3 .eng/bin/eng-run code-review --base main --allow-self-review >/dev/null && grep -q '^| 1 | low | x | y | open |' thoughts/shared/verification/*-base-main-review.md"

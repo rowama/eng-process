@@ -16,6 +16,7 @@ Session: standard Start/Finish per `.eng/PROCESS.md` section 8 (kit: `PROCESS.md
 ## Steps
 1. `.eng/bin/eng-check .`; confirm verification `pass` and no pending approvals.
 2. Sync with the base branch; re-run the full test suite.
+2a. (v2.5) Acceptance suite green on every planned channel; `python3 .eng/bin/eng-spec status .` clean or re-approved by Rob.
 3. Finalize the CHANGELOG entry (user-facing summary first; `.eng/bin/eng-check` rejects `<...>` placeholders and empty bullets); bump VERSION per project convention.
 4. Docs audit: README/AGENTS.md/API docs match changed behavior.
 5. Push (per `push_permission`; default ask Rob first) and open a PR linking the plan, verification report, review findings and ADRs. Wait for CI; fix only by root cause.

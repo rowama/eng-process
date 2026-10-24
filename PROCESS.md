@@ -75,7 +75,7 @@ Discovering that an earlier artifact is wrong is normal. Any agent or the owner 
 
 **Approvals live only in the Approval log table** (`| date | CP-X | path | decision |`). `eng-check` flags an approval written anywhere else in PROJECT_STATE.md (a prose line like "CP-C approved by Rob", a row-like line outside the table, a stray line inside the section), and any `approved` status without a table row.
 
-**Design changes after CP-A.** Once the design doc is approved, editing it needs re-approval: set it back to `in-review` and request CP-A again, then log a **new** Approval log row (newer date). To make the check exact, put the content hash in the decision cell: `approved sha256:<first 12+ hex of sha256 of the file, LF line endings>`. Without a hash, `eng-check` warns when git shows a commit touching the approved design dated after the latest CP-A row. Edits during phase `discover` are never flagged. It also warns when plan or slice drafts exist while no design doc is approved (except triage small). Both checks are warn-only until v2.5.0 (`--strict` makes them errors).
+**Design changes after CP-A.** Once the design doc is approved, editing it needs re-approval: set it back to `in-review` and request CP-A again, then log a **new** Approval log row (newer date). To make the check exact, put the content hash in the decision cell: `approved sha256:<first 12+ hex of sha256 of the file, LF line endings>`. Without a hash, `eng-check` warns when git shows a commit touching the approved design dated after the latest CP-A row. Edits during phase `discover` are never flagged. It also warns when plan or slice drafts exist while no design doc is approved (except triage small, or unset: size unknown before triage). Both checks are errors since v2.5.0.
 
 ## 5. WIP rules
 - One project phase at a time; **max 1 slice `in-progress`** (enforced). Max open PRs = what Rob can review (default 1).
@@ -151,9 +151,56 @@ Use `<kit>/bin/eng-init <repo> --brownfield` (eng-project-init "brownfield mode"
 
 ## 12. Learning loop: predictions, evidence, lessons, adoption
 - **Predictions.** Every ADR, advisor-consultation note and retro recommendation records *Expected outcome*, *Check date* and *What would prove it wrong* (templates `adr.md`, `retro.md`). eng-retro scores each past entry whose check date has passed as **right / wrong / unclear** with one line of evidence, in the retro and on the entry's `Score:` line.
-- **Rejecting a finding.** A rejected Codex (or any reviewer) finding needs evidence in its Reason cell: a `file:line` (e.g. `src/auth.py:42`) or a test reference (e.g. `tests/test_auth.py::test_expired_token`). `eng-check` warns on rejected rows without either (warn-only until v2.5.0). Retros record the **review hit-rate**: findings accepted vs rejected, and real bugs caught.
+- **Rejecting a finding.** A rejected Codex (or any reviewer) finding needs evidence in its Reason cell: a `file:line` (e.g. `src/auth.py:42`) or a test reference (e.g. `tests/test_auth.py::test_expired_token`). `eng-check` fails rejected rows without either (an error since v2.5.0). Retros record the **review hit-rate**: findings accepted vs rejected, and real bugs caught.
 - **Research provenance.** Each research file starts with a provenance header: per source, the source (URL or repo), the commit (repos: pinned SHA) or date read (web), and `verified` (checked against the source by the author) or `unverified`. Pin cloned source repos to a commit and record it. When a consultation or decision relies on research, run a **staleness diff** first (`git -C <src> fetch && git -C <src> log --oneline <pinned>..origin/HEAD -- <paths relied on>`; web sources: re-read the page) and note the result. **Snapshot** a web page (save a copy next to the research with its fetch date) only when a decision-driving claim rests on it, and do it at re-derivation time, not by default. See `SOURCES.md`.
 - **Kit lessons.** Format **"when X, do Y, because Z"** with origin, confirmation count and status (`templates/kit-lesson.md`). A lesson is a *hypothesis* until a second project confirms it. eng-retro proposes them; **Rob approves** each before it enters the kit's `LESSONS.md`.
 - **Design adoption.** `process-feedback.md` has a *Design adoption* section: each kit step adopted or skipped, with reason. A skip the owner made knowingly (informed-owner skip) is recorded but not counted. **Two counted non-safety skips of the same step raise a redesign flag** for that step. **Any skip of a safety gate** (personal data handling, mandatory plan review, CP approvals) **is escalated to Rob immediately.**
 - **Waste and time.** Each retro answers "which step felt like waste?" and records rough time per phase, so the kit can be trimmed with evidence.
 - **Frontend legibility.** Architecture reviews always ask: *Can the owner judge this frontend's behaviour and code? If not, what reduces that gap?* Plans include a short **Demo script**. Frontend CI checks are opt-in and size-dependent: `.eng/templates/ci-checklist.md` (not enforced by eng-check).
+
+## 13. Executable specifications (v2.5; Dave Farley's ATDD four-layer model)
+**Two kinds of "spec", one direction.** *Design-side specs* (the design doc, the architecture doc, ADRs) say **what**
+to build and **how** to build it; they are the authority. *Executable specs* are the **test-side** expression of the
+design doc's requirements (REQ-n) and its plain-language acceptance examples: pytest tests in domain language under
+`tests/acceptance/specs/`, each pointing back at its requirement with `@pytest.mark.req("REQ-n")` (the design doc's
+id). They never introduce requirements; a spec without a REQ, or a REQ without a spec, is a gap to fix in the design
+doc or the specs.
+
+**Four layers** (`.eng/templates/acceptance/`, copied by `eng-spec init`):
+1. **Specs** (`specs/`): what, never how; no URLs, selectors, status codes or sleeps; each creates its own data.
+2. **DSL** (`dsl.py`): the shared domain vocabulary; aliases names per run (functional and temporal isolation).
+3. **Protocol drivers** (`drivers/`): `api` (httpx), `ui` (Playwright), `mcp`. All system knowledge lives here.
+4. **System under test**: deployed like production, started outside the tests; external systems stubbed at its boundary.
+
+**By size.** Small: unchanged (unit/regression tests; no executable specs). Medium: specs on the API channel.
+Large: API channel plus one Playwright web journey (`@pytest.mark.channels("api", "ui")`), with an ADR from
+`.eng/templates/adr-acceptance-tests.md`.
+
+**Approvals.**
+- **CP-A:** Rob approves the plain-language Given/When/Then examples in the design doc's "Acceptance examples".
+- **CP-C:** the planner writes the specs and the DSL interface, runs `.eng/bin/eng-spec lock .`, and the CP-C Approval
+  log row records `approved speclock sha256:<hex>` (hash of `tests/acceptance/spec-lock.json`, printed by the command).
+- **Locked:** spec files, and the DSL public interface (public step names, parameters, docstrings).
+- **Flagged:** DSL assertion-step bodies (`assert_`/`then_`/`expect_`/`check_`/`verify_`); the Codex code review must
+  name each changed step.
+- **Free:** drivers, private DSL helpers (`_x`), `conftest.py`.
+- An edit to a locked spec or the DSL interface during implementation is **not** a hard failure: `eng-run implement`
+  prints a WARNING and writes an OWNER REVIEW entry in the run log, and `eng-check` warns until Rob re-approves
+  (re-lock, new CP-C row) or the edit is reverted.
+
+**Slices.** Each slice card lists `reqs:` and `specs:` (pytest node ids) or `specs: none - <reason>`. The implementer
+runs them first and confirms they are red, then makes them green without touching locked files.
+
+**Verify.** Re-run the acceptance suite on every planned channel; paste `eng-spec trace .` (REQ -> specs) with results
+into the verification report; `eng-spec status .` must be clean or re-approved.
+
+**eng-check (warn-only until v2.6.0; `--strict` makes them errors)**, active only when the project opted in
+(`acceptance: executable-specs` in PROJECT_STATE, or a spec lock exists) and triage is not small:
+`speclock-not-approved`, `spec-changed-without-approval`, `dsl-interface-changed`, `dsl-assertion-changed` (cleared
+when a review-findings file names the step), `slice-without-spec`, `spec-unknown-node`, `req-without-spec` (at
+verify/ship).
+
+**Migration / grandfathering.** Existing projects are unaffected until they opt in with `eng-spec init .` (after
+`eng-init --upgrade`). A project mid-increment may opt in at its next plan (CP-C); approved designs without
+"Acceptance examples" are grandfathered, and their examples are written straight into specs at CP-C.
+

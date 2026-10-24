@@ -1,5 +1,21 @@
 # Changelog (eng-process kit)
 
+## 2.5.0 - 2026-10-23
+### Added
+- Executable specifications (Dave Farley's ATDD four-layer model; PROCESS.md section 13; opt-in per project). Design-side specs (design doc, architecture, ADRs) say what and how to build; executable specs are their test-side expression and point back with `@pytest.mark.req("REQ-n")`.
+- `bin/eng-spec` / `eng spec`: `init` (copies the scaffold `templates/acceptance/` to `tests/acceptance/`, sets `acceptance: executable-specs`), `lock` (writes `tests/acceptance/spec-lock.json`: spec file hashes, DSL public interface, DSL assertion-step bodies; prints the CP-C row `approved speclock sha256:<hex>`), `status`, `trace` (REQ -> spec table).
+- Scaffold: `conftest.py` (`--channel api|ui|mcp`, `driver`/`app` fixtures, `req` and `channels` markers), `dsl.py` (aliasing for isolation), drivers `api.py` (httpx), `ui.py` (Playwright), `mcp.py` (MCP SDK), example spec, README.
+- Templates: design doc "Acceptance examples" (Given/When/Then, approved at CP-A); slice `reqs:`/`specs:` and a "run specs, confirm red" task; plan Testing Strategy acceptance line (channels, speclock); DoD item; verification report "Executable specs" table; `adr-acceptance-tests.md`.
+- Prompts (prompt_version 2): implement must not edit locked specs or the DSL interface; plan-review checks REQ coverage, domain language and channels; code-review runs `eng-spec status` and names changed assertion steps.
+- `eng-run implement` snapshots specs and the DSL around the run: on change it prints a WARNING and records an OWNER REVIEW entry in the run log (exit code unchanged).
+- eng-check (warn-only until v2.6.0, `--strict` makes them errors; only when opted in and triage is not small): `speclock-not-approved`, `spec-changed-without-approval`, `dsl-interface-changed`, `dsl-assertion-changed`, `slice-without-spec`, `spec-unknown-node`, `req-without-spec`.
+- Skills: discover (acceptance examples), architecture-review (channels ADR, large), plan (write and lock specs), implement-slice (red first, never edit locked files), verify (re-run, trace), ship, triage (depth by size), project-init (opt-in).
+- eng-init vendors `templates/acceptance/` to `.eng/templates/acceptance/`.
+### Changed (behaviour)
+- As announced in 2.4.0, `rejected-no-evidence`, `draft-before-design` and `design-changed-after-approval` are now errors. `draft-before-design` also skips triage `unset` (size unknown before triage).
+### Migration
+- `eng-init --upgrade`; nothing changes until a project runs `eng-spec init .`. Approved designs without Acceptance examples are grandfathered; write their examples straight into specs at the next CP-C.
+
 ## 2.4.0 - 2026-10-23
 ### Added
 - Predictions: ADR template gets Expected outcome / Check date / What would prove it wrong / Score; retro template records predictions made in consultations and scores past ones right/wrong/unclear (eng-retro step 2).

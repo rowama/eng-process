@@ -1,4 +1,4 @@
-"""Shared helpers for eng-* scripts. Stdlib only (python3 >= 3.8). Script output is ASCII-only."""
+"""Shared helpers for eng-* scripts. Stdlib only (python3 >= 3.9). Script output is ASCII-only."""
 import os, re, sys, subprocess, datetime
 
 try:  # avoid mojibake on consoles that are not UTF-8 (e.g. Windows cp1252)
@@ -532,3 +532,163 @@ def parse_toml_min(text):
             tgt = tgt.setdefault(k, {})
         tgt[keys[-1]] = _toml_val(m.group(2))
     return data
+
+
+# ---------------------------------------------------------------- v2.5 executable specs
+# Layout (Farley four-layer model): tests/acceptance/specs/ (executable specs, locked at CP-C),
+# tests/acceptance/dsl.py or dsl/ (DSL: public interface locked; assertion-step bodies flagged),
+# tests/acceptance/drivers/ (protocol drivers, freely editable). Lock: tests/acceptance/spec-lock.json,
+# its sha256 recorded in the CP-C Approval log row: 'approved speclock sha256:<12+ hex>'.
+ACC_DIR = "tests/acceptance"
+SPEC_DIR = ACC_DIR + "/specs"
+LOCK_FILE = ACC_DIR + "/spec-lock.json"
+ASSERT_PREFIXES = ("assert_", "then_", "expect_", "check_", "verify_")
+REQ_TAG = re.compile(r"""\bmark\.req\(\s*(['"])([^'"]+)\1""")
+REQ_ID = re.compile(r"\bREQ-\d+\b")
+WARN_ONLY_UNTIL.update({c: "2.6.0" for c in (
+    "spec-changed-without-approval", "dsl-interface-changed", "dsl-assertion-changed",
+    "slice-without-spec", "spec-unknown-node", "req-without-spec", "speclock-not-approved")})
+
+
+def _py_files(repo, rel_dir):
+    out, base = [], os.path.join(repo, rel_dir)
+    for d, dirs, files in os.walk(base):
+        dirs[:] = sorted(x for x in dirs if not x.startswith((".", "__")))
+        out += [posix(os.path.relpath(os.path.join(d, f), repo)) for f in sorted(files) if f.endswith(".py")]
+    return out
+
+
+def dsl_files(repo):
+    one = ACC_DIR + "/dsl.py"
+    return ([one] if os.path.isfile(os.path.join(repo, one)) else []) + _py_files(repo, ACC_DIR + "/dsl")
+
+
+def acceptance_enabled(repo, state):
+    """Opted in when PROJECT_STATE 'acceptance:' starts with executable-specs, or a spec lock exists."""
+    v = str((state or {}).get("acceptance", "")).strip()
+    return v.startswith("executable-specs") or os.path.isfile(os.path.join(repo, LOCK_FILE))
+
+
+def _sha_text(t):
+    import hashlib
+    return hashlib.sha256(t.encode("utf-8")).hexdigest()
+
+
+def dsl_symbols(path):
+    """{qualified public name: (interface sha, body sha or None, is_assertion)} for a DSL file.
+    Interface = signature (ast.unparse of args) + docstring; body = code without the docstring.
+    Underscore names are private. Parse errors yield {'<parse-error>': ...} so they are flagged."""
+    import ast
+    src = open(path, encoding="utf-8", errors="replace").read().replace("\r\n", "\n")
+    try:
+        tree = ast.parse(src)
+    except SyntaxError as e:
+        return {"<parse-error>": (_sha_text(str(e)), None, False)}
+    out = {}
+
+    def fn(node, prefix):
+        name = prefix + node.name
+        doc = ast.get_docstring(node) or ""
+        sig = "%s(%s)" % (node.name, ast.unparse(node.args))
+        if node.returns is not None:
+            sig += " -> " + ast.unparse(node.returns)
+        body = node.body[1:] if doc and node.body and isinstance(node.body[0], ast.Expr) else node.body
+        is_assert = node.name.startswith(ASSERT_PREFIXES)
+        out[name] = (_sha_text(sig + "\n" + doc.strip()), _sha_text("\n".join(ast.unparse(b) for b in body)) if is_assert else None, is_assert)
+
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and not node.name.startswith("_"):
+            fn(node, "")
+        elif isinstance(node, ast.ClassDef) and not node.name.startswith("_"):
+            out[node.name] = (_sha_text((ast.get_docstring(node) or "").strip()), None, False)
+            for sub in node.body:
+                if isinstance(sub, (ast.FunctionDef, ast.AsyncFunctionDef)) and (not sub.name.startswith("_") or sub.name == "__init__"):
+                    fn(sub, node.name + ".")
+    return out
+
+
+def spec_snapshot(repo):
+    """Current state of the locked layers: specs (file sha), dsl interface + assertion bodies."""
+    snap = {"specs": {}, "dsl_interface": {}, "dsl_assertions": {}}
+    for f in _py_files(repo, SPEC_DIR):
+        snap["specs"][f] = file_sha(os.path.join(repo, f))
+    for f in dsl_files(repo):
+        for name, (isha, bsha, _) in dsl_symbols(os.path.join(repo, f)).items():
+            key = "%s::%s" % (f, name)
+            snap["dsl_interface"][key] = isha
+            if bsha:
+                snap["dsl_assertions"][key] = bsha
+    return snap
+
+
+def lock_text(snap, kit_version=None):
+    import json
+    data = {"comment": "eng-process executable-spec lock (eng-spec lock). Approve its sha256 at CP-C: "
+                       "'| date | CP-C | <plan.md> | approved speclock sha256:<hex> |'. Do not edit by hand.",
+            "kit_version": kit_version or KIT_VERSION}
+    data.update(snap)
+    return json.dumps(data, indent=2, sort_keys=True) + "\n"
+
+
+def read_lock(repo):
+    import json
+    p = os.path.join(repo, LOCK_FILE)
+    if not os.path.isfile(p):
+        return None
+    try:
+        return json.load(open(p, encoding="utf-8"))
+    except ValueError:
+        return {}
+
+
+def diff_snap(old, new):
+    """{'specs': [...], 'dsl_interface': [...], 'dsl_assertions': [...]} changed/added/removed keys."""
+    out = {}
+    for k in ("specs", "dsl_interface", "dsl_assertions"):
+        a, b = (old or {}).get(k, {}) or {}, new.get(k, {})
+        ch = ["changed " + x for x in sorted(set(a) & set(b)) if a[x] != b[x]]
+        ch += ["added " + x for x in sorted(set(b) - set(a))] + ["removed " + x for x in sorted(set(a) - set(b))]
+        out[k] = ch
+    return out
+
+
+def speclock_approved(repo, rows):
+    """(state, date): 'ok' when the latest 'speclock sha256:' Approval log row matches the lock file,
+    'mismatch' when it does not, 'none' when no row records a speclock."""
+    mine = [r for r in rows if re.search(r"speclock\s+sha256:[0-9a-f]{7,64}", r["decision"])
+            and re.search(r"approved|accepted", r["decision"]) and not re.search(r"reject", r["decision"])]
+    if not mine:
+        return "none", ""
+    last = max(mine, key=lambda r: r["date"])
+    h = re.search(r"speclock\s+sha256:([0-9a-f]{7,64})", last["decision"]).group(1)
+    p = os.path.join(repo, LOCK_FILE)
+    if os.path.isfile(p) and file_sha(p).startswith(h):
+        return "ok", last["date"]
+    return "mismatch", last["date"]
+
+
+def spec_req_tags(repo):
+    """{req id: [spec file, ...]} from @pytest.mark.req("REQ-n") in tests/acceptance/specs."""
+    out = {}
+    for f in _py_files(repo, SPEC_DIR):
+        for m in REQ_TAG.finditer(open(os.path.join(repo, f), encoding="utf-8", errors="replace").read()):
+            out.setdefault(m.group(2), []).append(f)
+    return out
+
+
+def design_req_ids(body):
+    sec = section(body, "Requirements (acceptance criteria)") or section(body, "Requirements") or ""
+    return sorted(set(REQ_ID.findall(sec)), key=lambda x: int(x.split("-")[1]))
+
+
+def spec_node_problem(repo, node):
+    """None if 'path.py::test_name' (or 'path.py') exists, else a problem string."""
+    path, _, fn = str(node).partition("::")
+    path = posix(path.strip())
+    full = os.path.join(repo, path)
+    if not os.path.isfile(full):
+        return "spec file does not exist: " + path
+    name = fn.split("::")[-1].split("[")[0].strip()
+    if name and not re.search(r"(?m)^\s*(async\s+)?def\s+%s\s*\(" % re.escape(name), open(full, encoding="utf-8", errors="replace").read()):
+        return "spec %s has no test function '%s'" % (path, name)
+    return None

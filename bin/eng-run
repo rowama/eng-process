@@ -304,6 +304,14 @@ if needs_prompt_file or stdin_text:
 for p_ in (out_file,):
     if os.path.isfile(p_):
         os.remove(p_)
+spec_before = None   # v2.5: snapshot locked specs + DSL interface/assertions around an implement run (warn, never fail)
+if a.role == "implement":
+    try:
+        _st = L.read_front_matter(os.path.join(repo, "PROJECT_STATE.md"))[0] or {} if os.path.isfile(os.path.join(repo, "PROJECT_STATE.md")) else {}
+        if L.acceptance_enabled(repo, _st):
+            spec_before = L.spec_snapshot(repo)
+    except Exception:
+        spec_before = None
 started = L.now()
 print("eng-run: %s via %s: %s" % (a.role, rname, shown(argv)), flush=True)
 chunks = []
@@ -354,6 +362,16 @@ if ver_rel:
     summary.append("- review file: %s - %s" % (ver_rel, verdict))
 if rc != 0:
     summary.append("- FAILED: the runner exited with %d; see Output" % rc)
+if spec_before is not None:
+    dd = L.diff_snap(spec_before, L.spec_snapshot(repo))
+    changed = [("locked spec", x) for x in dd["specs"]] + [("DSL interface", x) for x in dd["dsl_interface"]] + \
+              [("DSL assertion step", x) for x in dd["dsl_assertions"]]
+    if changed:
+        summary.append("- OWNER REVIEW: this run edited executable specs / the DSL (locked at CP-C); Rob must re-approve or revert:")
+        summary += ["  - %s %s" % c for c in changed]
+        sys.stderr.write("eng-run: WARNING: implement run edited locked executable specs or the DSL - flagged for owner review:\n")
+        for c in changed:
+            sys.stderr.write("  %s %s\n" % c)
 tail = [l for l in result.splitlines() if l.strip()][-12:]
 if a.role == "implement" and tail:
     summary.append("- last lines of the result:")

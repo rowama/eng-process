@@ -18,13 +18,13 @@ Python 3.9+, stdlib only, no dependencies. Install once per machine:
 ```bash
 pipx install git+https://github.com/rowama/eng-process        # or: uv tool install git+https://github.com/rowama/eng-process
 pipx upgrade eng-process                                        # or: uv tool upgrade eng-process
-pipx install git+https://github.com/rowama/eng-process@v2.4.0  # pin a release tag
+pipx install git+https://github.com/rowama/eng-process@v2.5.0  # pin a release tag
 ```
 Then, from a repo root:
 ```bash
 eng init .            # scaffold + vendor the kit (same as bin/eng-init)
 eng upgrade .         # re-vendor kit files after `pipx upgrade` (same as eng-init --upgrade)
-eng check | eng status | eng new <type> <slug> | eng run <role> ... | eng version
+eng check | eng status | eng new <type> <slug> | eng run <role> ... | eng spec <init|lock|status|trace> | eng version
 ```
 `eng <cmd> --help` shows each command's options; the repo defaults to `.`. The repo never needs the package: `eng init` copies standalone scripts into `.eng/bin/`, so `python3 .eng/bin/eng-check .` keeps working for any agent, with or without `eng` installed.
 - **Windows (native):** install Python from python.org or `winget install Python.Python.3.12`, then `py -m pip install --user pipx && py -m pipx ensurepath` (reopen the terminal). `eng` works in PowerShell, cmd and Git Bash. Vendored scripts: `py .eng/bin/eng-check .`. Git for Windows is required (eng-init calls `git`).
@@ -61,6 +61,7 @@ Flow: `triage → discover (CP-A) → scope → research (CP-R) → architecture
 - `eng-run <role> ...` (v2.3): run an agent non-interactively from the repo root: `plan-review <plan>`, `implement <plan> <slice-id>`, `code-review <slice-id | --base REF>`. Runner per role from `.eng/runners.toml` (project-owned; defaults implement=claude, reviews=codex), override with `ENG_RUNNER_<ROLE>` or `--runner`. Adapters: `claude`, `codex`, generic `command`. Every run writes `thoughts/shared/runs/<date>-<role>-<target>.md`; reviews also write a review-findings file in `thoughts/shared/verification/` (never terminal-only). Refuses self-review unless `--allow-self-review`; `--dry-run` prints the exact command. Bots (Chet, Dave) may run it on Rob's PC only with Rob's approval.
 - v2.4 learning loop (PROCESS.md §12): ADR/retro predictions scored in eng-retro, evidence required to reject a finding, research provenance headers (SOURCES.md), kit lessons (`LESSONS.md`, `templates/kit-lesson.md`), design-adoption tracking in process feedback, opt-in CI checklist (`templates/ci-checklist.md`). New eng-check warnings (warn-only until v2.5.0): rejected-no-evidence, draft-before-design, design-changed-after-approval.
 Set `ENG_AGENT` to avoid repeating `--agent`.
+- `eng-spec <init|lock|status|trace>` (v2.5): opt-in executable specs (Dave Farley's four-layer ATDD: specs, DSL, protocol drivers, system under test). `init` copies the scaffold to `tests/acceptance/`; `lock` writes `tests/acceptance/spec-lock.json` and prints the CP-C `approved speclock sha256:` row; `status` diffs against the lock; `trace` prints the REQ -> spec table for the verification report. See PROCESS.md section 13.
 
 ## Test
 ```bash

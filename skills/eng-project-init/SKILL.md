@@ -19,6 +19,7 @@ Session: starts fresh with only the repo's top-level listing, README and build f
 1. Greenfield: `<kit>/bin/eng-init <repo> --agent <you> [--triage <size>]`. Brownfield: add `--brownfield` and follow PROCESS.md section 11 (`git mv` in a dedicated commit, map each doc to a kit type and loc (eng-init prints a suggested destination per doc; confirm each)ation, ADR renumbering and cross-reference rewrite, back-fill the Approval log with Checkpoint `pre-kit`, delete nothing without Rob's OK). `--force` only with Rob's consent.
 2. Fill AGENTS.md Commands and Architecture map from commands you actually ran; leave `<cmd>` where unknown and list them as Blockers.
 3. Fill the PROJECT_STATE working-agreement fields (defaults per PROCESS.md section 10; ask Rob about `push_permission` and `board`).
+3a. (v2.5, optional) Executable specs are opt-in per project: `python3 .eng/bin/eng-spec init .` copies the four-layer scaffold to `tests/acceptance/` and sets `acceptance: executable-specs`. Existing projects are grandfathered until they opt in (PROCESS.md 13).
 4. Set Goal and Next action. **Respect a known triage:** if `triage` is unset, Next action = "Run eng-triage". If it is set (or the project claims a later phase), Next action = "Run eng-triage readiness check, then <skill for the phase>". Never overwrite a known triage.
 5. `.eng/bin/eng-check <repo>` must pass; `.eng/bin/eng-status <repo>` readiness line reviewed.
 

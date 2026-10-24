@@ -56,6 +56,10 @@ Slice card: <thoughts/shared/slices/...md>
 ## Testing Strategy
 - Unit:
 - Integration:
+- Acceptance (executable specs, v2.5; medium/large): specs in tests/acceptance/specs/ written from the design doc's
+  Acceptance examples, one or more per REQ (`@pytest.mark.req("REQ-n")`). Channels: <medium: api> <large: api + one
+  Playwright web journey (`@pytest.mark.channels("api", "ui")`)>. Speclock: `eng-spec lock` before CP-C; record
+  `approved speclock sha256:<hex>` in the CP-C Approval log row. Small work: n/a.
 - Manual steps:
 
 ## Risks, Rollback, Migration

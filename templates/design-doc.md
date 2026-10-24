@@ -23,6 +23,13 @@ links: []
 <!-- EARS-style or Given/When/Then; each must be testable. -->
 - [ ] REQ-1: WHEN <trigger> THE SYSTEM SHALL <response>
 
+## Acceptance examples
+<!-- v2.5. Medium/large work: 1-3 concrete examples per requirement in plain language, Given/When/Then, in the
+     problem domain's words (what, never how: no URLs, buttons, status codes). Rob approves these at CP-A.
+     They become the executable specs (tests/acceptance/specs/, tagged @pytest.mark.req("REQ-n")) locked at CP-C.
+     Small work: leave "n/a - small". -->
+- REQ-1 / example 1: GIVEN <context> WHEN <action> THEN <observable outcome>
+
 ## Constraints and assumptions
 - [NEEDS CLARIFICATION: <question>]   <!-- must be resolved before CP-A approval -->
 

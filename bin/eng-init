@@ -50,6 +50,8 @@ else:
     old_tpl = {}   # previously vendored templates = baseline for boilerplate refresh on --upgrade
     if os.path.isdir(os.path.join(eng, "templates")):
         for f in os.listdir(os.path.join(eng, "templates")):
+            if not os.path.isfile(os.path.join(eng, "templates", f)):
+                continue
             with open(os.path.join(eng, "templates", f), encoding="utf-8", errors="replace") as fh:
                 old_tpl[f] = fh.read()
     for f in sorted(os.listdir(tdir)):
@@ -70,6 +72,13 @@ else:
         for f in sorted(os.listdir(pdir)):
             if f.endswith(".md"):
                 lf_copy(os.path.join(pdir, f), os.path.join(eng, "prompts", f))
+    adir = os.path.join(tdir, "acceptance")   # v2.5 executable-spec scaffold (kit-owned copy; eng-spec init copies it into tests/)
+    if os.path.isdir(adir):
+        for d, dirs, files in os.walk(adir):
+            dirs[:] = [x for x in dirs if not x.startswith("__")]
+            for f in sorted(files):
+                if not f.endswith((".pyc", ".pyo")):
+                    lf_copy(os.path.join(d, f), os.path.join(eng, "templates", "acceptance", os.path.relpath(os.path.join(d, f), adir)))
     rt = os.path.join(eng, "runners.toml")   # project-owned config: created once, never overwritten
     if not os.path.exists(rt) and os.path.isfile(os.path.join(tdir, "runners.toml")):
         lf_copy(os.path.join(tdir, "runners.toml"), rt)

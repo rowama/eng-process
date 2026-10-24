@@ -17,7 +17,7 @@ expect 0 "eng-new adr / plan / retro from new templates pass eng-check" bash -c 
 # 2. rejected finding needs evidence (warn-only until 2.5.0)
 RJ="$T/rj"; cp -r "$M" "$RJ"; RV=$(cd "$RJ" && ls thoughts/shared/verification/*-plan-review.md)
 expect 0 "rejected finding with a test reference: no evidence warning" bash -c "cd '$RJ' && eng-check . && ! eng-check . | grep -q 'without evidence'"
-expect 0 "rejected finding without evidence warns (exit 0)" bash -c "cd '$RJ' && sed -i 's#contract first is intended, see tests/test_contract.py#contract first is intended#' $RV && eng-check . && eng-check . | grep -q '^WARN  $RV: finding 2 rejected without evidence.*warn-only until v2.5.0'"
+expect 0 "rejected finding without evidence is an error from 2.5.0" bash -c "cd '$RJ' && sed -i 's#contract first is intended, see tests/test_contract.py#contract first is intended#' $RV && ! eng-check . && eng-check . | grep -q '^ERROR $RV: finding 2 rejected without evidence'"
 expect 1 "rejected finding without evidence errors with --strict" bash -c "cd '$RJ' && eng-check --strict ."
 expect 0 "file:line evidence accepted" bash -c "cd '$RJ' && sed -i 's#contract first is intended |#contract first is intended (src/api/contract.ts:42) |#' $RV && ! eng-check . | grep -q 'without evidence'"
 expect 0 "evidence regex: file:line, pytest node, *_test, .spec, plain prose" python3 -c "
@@ -28,14 +28,14 @@ assert all(L.EVIDENCE.search(x) for x in ok), [x for x in ok if not L.EVIDENCE.s
 assert not any(L.EVIDENCE.search(x) for x in bad), [x for x in bad if L.EVIDENCE.search(x)]"
 
 # 3. plan/slice drafts before CP-A (warn-only)
-expect 0 "plan/slice drafts without approved design warn (medium)" bash -c "cp -r '$G' '$T/dd' && cd '$T/dd' && sed -i 's/^triage: .*/triage: medium/' PROJECT_STATE.md && eng-check . && eng-check . | grep -q '^WARN  PROJECT_STATE.md: plan/slice drafts exist but no design doc is approved (CP-A)'"
+expect 0 "plan/slice drafts without approved design error (medium, 2.5.0)" bash -c "cp -r '$G' '$T/dd' && cd '$T/dd' && sed -i 's/^triage: .*/triage: medium/' PROJECT_STATE.md && ! eng-check . && eng-check . | grep -q '^ERROR PROJECT_STATE.md: plan/slice drafts exist but no design doc is approved (CP-A)'"
 expect 0 "no drafts-before-design warning once design approved" bash -c "! eng-check '$M' | grep -q 'drafts exist but no design'"
 expect 0 "no drafts-before-design warning for triage small" bash -c "cp -r '$T/dd' '$T/dds' && cd '$T/dds' && sed -i 's/^triage: .*/triage: small/' PROJECT_STATE.md && ! eng-check . | grep -q 'drafts exist but no design'"
 
 # 4. design changed after CP-A (warn-only; git dates or sha256 in the decision)
 DC="$T/dc"; cp -r "$M" "$DC"; DD=$(cd "$DC" && ls docs/design/*.md)
 (cd "$DC" && git add -A && GIT_COMMITTER_DATE=2026-01-01T12:00:00 git commit -qm base && echo "edit" >> "$DD" && git commit -qam "edit design" )
-expect 0 "design committed after CP-A approval warns" bash -c "cd '$DC' && eng-check . && eng-check . | grep -q '^WARN  $DD: design doc committed changes after CP-A approval on 2026-01-01'"
+expect 0 "design committed after CP-A approval errors (2.5.0)" bash -c "cd '$DC' && ! eng-check . && eng-check . | grep -q '^ERROR $DD: design doc committed changes after CP-A approval on 2026-01-01'"
 expect 0 "commit on the approval day itself does not warn" bash -c "cp -r '$DC' '$T/dc0' && cd '$T/dc0' && git reset -q --hard HEAD~1 && ! eng-check . | grep -q 'after CP-A approval'"
 expect 0 "design change during discover is not flagged" bash -c "cp -r '$DC' '$T/dc1' && cd '$T/dc1' && sed -i 's/^phase: implement/phase: discover/' PROJECT_STATE.md && ! eng-check . | grep -q 'after CP-A approval'"
 expect 0 "a newer CP-A re-approval row clears the warning" bash -c "cp -r '$DC' '$T/dc2' && cd '$T/dc2' && printf '| %s | CP-A | %s | approved (re-approval) |\n' \$(date +%F) '$DD' >> PROJECT_STATE.md && ! eng-check . | grep -q 'after CP-A approval'"
