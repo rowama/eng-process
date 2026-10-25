@@ -1,5 +1,13 @@
 # Changelog (eng-process kit)
 
+## 2.5.1 - 2026-10-25
+### Changed (process)
+- Implement handoff defaults to eng-run: once a slice is ready the planner starts `python3 .eng/bin/eng-run implement <plan> <slice-id>` and tells Rob as FYI; CP-C / slice-ready approval covers starting it unless Rob said otherwise. The paste prompt is now the "Fallback (interactive Claude)".
+- `templates/ready-to-implement.md` leads with the eng-run command; `eng-status` banner reads "ready to implement (start with eng-run; show Rob as FYI)".
+- PROCESS.md section 10, eng-implement-slice, eng-plan, README aligned. Planners still stop for CP-S, push when `push_permission: ask`, eng-check failures, locked-spec issues, open critical/high plan-review findings, blockers.
+### Migration
+- `eng-init --upgrade` to refresh vendored templates/skills. No `eng spec` changes.
+
 ## 2.5.0 - 2026-10-23
 ### Added
 - Executable specifications (Dave Farley's ATDD four-layer model; PROCESS.md section 13; opt-in per project). Design-side specs (design doc, architecture, ADRs) say what and how to build; executable specs are their test-side expression and point back with `@pytest.mark.req("REQ-n")`.

@@ -72,7 +72,7 @@ if fm.get("phase") == "implement" and r.returncode == 0 and not pend and sfm.get
             msg = L.fill(f.read(), repo=repo, plan=plan or "(small task: slice card only)", slice=act,
                          slice_id=sfm.get("id", act), implementer=fm.get("implementer", "the implementer"),
                          push=fm.get("push_permission", "ask"))
-        print("-- ready to implement (send to Rob) --")
+        print("-- ready to implement (start with eng-run; show Rob as FYI) --")
         print(re.sub(r"<!--.*?-->\n?", "", msg, flags=re.S).strip())
 
 # mandatory plan review (medium/large): print the ready-to-paste codex command while a plan awaits CP-C

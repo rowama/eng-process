@@ -7,7 +7,7 @@ description: Implement exactly one slice of an approved plan, test-first, then h
 Session: standard Start/Finish per `.eng/PROCESS.md` section 8 (kit: `PROCESS.md`). Scripts: `.eng/bin/eng-check`, `.eng/bin/eng-status`, `.eng/bin/eng-new`.
 
 ## Who runs this
-The PROJECT_STATE `implementer` (default Claude Code on Rob's PC). If you are the planner, don't code: check readiness (plan approved, slice is `active_slice` with `status: todo`, `pending_approvals` empty, `.eng/bin/eng-check` OK) and send Rob the "ready to implement" message that `.eng/bin/eng-status` prints (repo path, plan file, slice id, paste prompt "Run eng-resume, then eng-implement-slice for <slice> per <plan>"), then stop.
+The PROJECT_STATE `implementer` (default Claude Code on Rob's PC). If you are the planner, don't code: check readiness (plan approved, slice is `active_slice` with `status: todo`, `pending_approvals` empty, `.eng/bin/eng-check` OK) then start the run: `python3 .eng/bin/eng-run implement <plan> <slice-id>` (or `eng run implement ...`). Rob's CP-C / slice-ready approval covers starting it unless he said otherwise; with no standing note in PROJECT_STATE, one-line "start implement?" is enough. Tell Rob once, as FYI, with the "ready to implement" message `.eng/bin/eng-status` prints. Don't default to paste-and-stop: the paste prompt ("Run eng-resume, then eng-implement-slice for <slice> per <plan>") is the fallback when eng-run/Claude CLI is unavailable or Rob wants to drive Claude interactively. Stop only for real decisions: CP-S, push when `push_permission: ask`, eng-check failures, locked-spec issues, open critical/high plan-review findings, blockers.
 
 ## Inputs (files only)
 - Approved plan (read fully); the slice card; files named in that phase's Changes Required

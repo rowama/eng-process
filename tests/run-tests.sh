@@ -51,7 +51,7 @@ M="$T/med"; cp -r "$G" "$M"; (cd "$M"
   printf '| 1 | high | plan 2 | missing auth test | fixed | added to slice 1 |\n| 2 | medium | plan 3 | order | rejected | contract first is intended, see tests/test_contract.py |\n| 3 | low | plan | naming | accepted-risk | Rob 2026-01-02 |\n' > /tmp/rows
   sed -i "/^|---|---|---|---|---|---|/r /tmp/rows" "$V"; sed -i "s#^plan_review: .*#plan_review: $V#" "$P")
 expect 0 "eng-check consistent medium project at implement" eng-check "$M"
-expect 0 "eng-status prints ready-to-implement message" bash -c "eng-status '$M' | grep -q 'Run eng-resume, then eng-implement-slice for SLICE-'"
+expect 0 "eng-status prints ready-to-implement message" bash -c "eng-status '$M' | grep -q 'eng-run implement .* SLICE-' && eng-status '$M' | grep -q 'Fallback (interactive Claude)' && eng-status '$M' | grep -q 'Run eng-resume, then eng-implement-slice for SLICE-'"
 expect 0 "eng-init Next respects known triage" bash -c "eng-init '$M' | grep -q \"triage is already 'medium'\""
 expect 0 "later checkpoint may be pending early" bash -c "cp -r '$G' '$T/early' && cd '$T/early' && sed -i \"s#^pending_approvals: \\[\\]#pending_approvals: [\\\"CP-B: \$(ls docs/design/*.md) - auth, hosting\\\"]#\" PROJECT_STATE.md && eng-check ."
 expect 0 "ADR deferred status valid" bash -c "cp -r '$G' '$T/def' && cd '$T/def' && sed -i 's/^status: proposed.*/status: deferred/' docs/decisions/0001-*.md && eng-check ."
