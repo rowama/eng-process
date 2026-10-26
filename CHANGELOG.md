@@ -1,5 +1,11 @@
 # Changelog (eng-process kit)
 
+## 2.5.5 - 2026-10-26
+### Added
+- `eng upgrade .` / `eng-init --upgrade` now makes a kit-only git commit (`chore: eng-process kit upgrade to vX.Y.Z`) staging only `.eng/bin/`, `.eng/templates/`, `.eng/prompts/`, `.eng/PROCESS.md`, `.eng/VERSION`, `.claude/skills/eng-*`, plus `.gitignore` when its eng-process defaults block changed. Never stages `.eng/runners.toml` or project files (OWNER-GUIDE.md, AGENTS.md boilerplate refreshes stay uncommitted). Never pushes. Uses the repo's git identity.
+- Prints `Committed kit upgrade to vX.Y.Z as <sha> (kit paths only; not pushed).` or `Kit files updated to vX.Y.Z; left uncommitted: <reason>` (not a git repo, merge/rebase/cherry-pick/revert in progress, nothing to commit, `--no-commit`). Exit code stays 0.
+- `--no-commit` escape hatch (`eng upgrade . --no-commit`).
+
 ## 2.5.4 - 2026-10-26
 ### Added
 - Autonomous-run harness for every `eng-run` role: right after the runner starts, eng-run writes a PID marker `thoughts/shared/runs/<stem>.running.md` (`status: running`, `pid`, `eng_run_pid`, `role`, `slice`, `target`, `started`, `run_log`; valid front matter so eng-check passes mid-run) and deletes it once the finished run log is written. Finished run logs record `pid` and `eng_run_pid`. No marker when the runner fails to start; `--dry-run` prints the marker path and writes nothing.

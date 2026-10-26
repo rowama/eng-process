@@ -18,12 +18,12 @@ Python 3.9+, stdlib only, no dependencies. Install once per machine:
 ```bash
 pipx install git+https://github.com/rowama/eng-process        # or: uv tool install git+https://github.com/rowama/eng-process
 pipx upgrade eng-process                                        # or: uv tool upgrade eng-process
-pipx install git+https://github.com/rowama/eng-process@v2.5.4  # pin a release tag
+pipx install git+https://github.com/rowama/eng-process@v2.5.5  # pin a release tag
 ```
 Then, from a repo root:
 ```bash
 eng init .            # scaffold + vendor the kit (same as bin/eng-init)
-eng upgrade .         # re-vendor kit files after `pipx upgrade` (same as eng-init --upgrade)
+eng upgrade .         # re-vendor kit files after `pipx upgrade` (same as eng-init --upgrade); v2.5.5: auto-commits kit paths only (not pushed), `--no-commit` to skip
 eng check | eng status | eng new <type> <slug> | eng run <role> ... | eng spec <init|lock|status|trace> | eng version
 ```
 `eng <cmd> --help` shows each command's options; the repo defaults to `.`. The repo never needs the package: `eng init` copies standalone scripts into `.eng/bin/`, so `python3 .eng/bin/eng-check .` keeps working for any agent, with or without `eng` installed.

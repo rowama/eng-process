@@ -23,6 +23,7 @@ ap.add_argument("--triage", choices=["small", "medium", "large"])
 ap.add_argument("--brownfield", action="store_true", help="report pre-kit docs/ADRs to migrate")
 ap.add_argument("--force", action="store_true", help="overwrite existing kit files")
 ap.add_argument("--upgrade", action="store_true", help="re-vendor kit-owned files only (.eng/bin, .eng/templates, .eng/prompts, .eng/PROCESS.md, .eng/VERSION, .claude/skills/eng-*); never touches project files")
+ap.add_argument("--no-commit", action="store_true", help="with --upgrade: skip the automatic kit-only git commit")
 a = ap.parse_args()
 repo = os.path.abspath(a.repo_dir)
 os.makedirs(repo, exist_ok=True)
@@ -113,9 +114,59 @@ elif block:
     gnew = gtxt + ("" if not gtxt or gtxt.endswith("\n") else "\n") + ("\n" if gtxt else "") + block
 else:
     gnew = gtxt
+gi_changed = gnew != gtxt
 if gnew != gtxt:
     open(gi, "w", encoding="utf-8", newline="\n").write(gnew)
     print("update  .gitignore (eng-process defaults block: %s)" % (", ".join(missing) if missing else "all defaults already present; block removed"))
+
+
+KIT_PATHS = [".eng/bin", ".eng/templates", ".eng/prompts", ".eng/PROCESS.md", ".eng/VERSION", ".claude/skills"]
+
+
+def _git(repo, *args):
+    import subprocess
+    try:
+        r = subprocess.run(["git", "-C", repo] + list(args), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                           universal_newlines=True, encoding="utf-8", errors="replace")
+        return r.returncode, r.stdout.strip(), r.stderr.strip()
+    except OSError as e:
+        return 127, "", str(e)
+
+
+def kit_commit(repo, gi_changed):
+    """v2.5.5: commit only kit-owned paths after --upgrade (never runners.toml or project files). Never pushes."""
+    v = L.KIT_VERSION
+    def left(reason):
+        print("Kit files updated to v%s; left uncommitted: %s" % (v, reason))
+    if a.no_commit:
+        return left("--no-commit")
+    rc, top, _ = _git(repo, "rev-parse", "--show-toplevel")
+    if rc != 0 or not os.path.isdir(os.path.join(repo, ".git")):
+        return left("not a git repo" if rc != 0 else "repo is not the git top level (%s)" % top)
+    _, gdir, _ = _git(repo, "rev-parse", "--absolute-git-dir")
+    for m, what in (("MERGE_HEAD", "merge"), ("CHERRY_PICK_HEAD", "cherry-pick"), ("REVERT_HEAD", "revert"),
+                    ("rebase-merge", "rebase"), ("rebase-apply", "rebase")):
+        if gdir and os.path.exists(os.path.join(gdir, m)):
+            return left("%s in progress" % what)
+    paths = [p for p in KIT_PATHS[:-1] if os.path.exists(os.path.join(repo, p))]
+    paths += sorted(":(literal).claude/skills/" + d for d in (os.listdir(os.path.join(repo, ".claude/skills"))
+                    if os.path.isdir(os.path.join(repo, ".claude/skills")) else []) if d.startswith("eng-"))
+    if gi_changed:
+        paths.append(".gitignore")
+    if not paths:
+        return left("nothing to commit")
+    rc, out, err = _git(repo, "add", "-A", "--", *paths)
+    if rc != 0:
+        return left("git add failed: %s" % (err or out))
+    rc, _, _ = _git(repo, "diff", "--cached", "--quiet", "--", *paths)
+    if rc == 0:
+        return left("nothing to commit")
+    rc, out, err = _git(repo, "commit", "-q", "-m", "chore: eng-process kit upgrade to v%s" % v, "--", *paths)
+    if rc != 0:
+        _git(repo, "reset", "-q", "--", *paths)
+        return left("git commit failed: %s" % ((err or out).splitlines() or ["?"])[-1])
+    _, sha, _ = _git(repo, "rev-parse", "--short", "HEAD")
+    print("Committed kit upgrade to v%s as %s (kit paths only; not pushed)." % (v, sha))
 
 
 def tracked_ignored(repo):
@@ -212,6 +263,7 @@ if a.upgrade:
         for s_ in stale:
             print("  - " + s_)
     print("Upgraded kit files to v%s in %s. Project files untouched; run .eng/bin/eng-check ." % (L.KIT_VERSION, repo))
+    kit_commit(repo, gi_changed)
     sys.exit(0)
 
 sp = os.path.join(repo, "PROJECT_STATE.md")
