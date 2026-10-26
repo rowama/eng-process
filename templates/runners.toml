@@ -12,7 +12,11 @@ base = "main"            # default --base for code-review <slice-id>
 # Built-in adapters accept extra options, e.g.:
 # [runners.claude]
 # args = ["--model", "opus"]                       # appended to every claude call
-# implement_args = ["--permission-mode", "acceptEdits"]  # default for role implement
+# Role implement built-in default: ["--permission-mode", "bypassPermissions"] (headless needs non-interactive approval).
+# Note: acceptEdits alone does NOT auto-approve pytest or `python3 .eng/bin/*` (only file edits + limited
+# filesystem Bash), so a headless implement stalls at eng-check. Override only if you accept that:
+# implement_args = ["--permission-mode", "acceptEdits"]                      # back to acceptEdits (not headless-safe)
+# implement_args = ["--permission-mode", "acceptEdits", "--allowedTools", "Bash(pytest:*),Bash(python3 .eng/bin/*)"]  # tighter
 # [runners.codex]
 # args = ["--model", "gpt-5-codex"]
 # implement_args = ["--sandbox", "workspace-write"]   # default: writes only inside the repo, no network

@@ -1,5 +1,12 @@
 # Changelog (eng-process kit)
 
+## 2.5.2 - 2026-10-26
+### Changed
+- `eng-run implement` with the built-in claude runner now defaults to `--permission-mode bypassPermissions` (was `acceptEdits`). Headless runs cannot answer prompts and acceptEdits does not auto-approve pytest / `python3 .eng/bin/*`, so implement stalled at eng-check. Reviews stay read-only via `--allowedTools`; codex defaults unchanged.
+- `templates/runners.toml`, OWNER-GUIDE, eng-run help document the default and how to override back to acceptEdits or tighten.
+### Migration
+- `eng upgrade .` to refresh vendored `.eng/bin/eng-run`. `runners.toml` is project-owned and not overwritten; an explicit `implement_args` there still wins.
+
 ## 2.5.1 - 2026-10-25
 ### Changed (process)
 - Implement handoff defaults to eng-run: once a slice is ready the planner starts `python3 .eng/bin/eng-run implement <plan> <slice-id>` and tells Rob as FYI; CP-C / slice-ready approval covers starting it unless Rob said otherwise. The paste prompt is now the "Fallback (interactive Claude)".

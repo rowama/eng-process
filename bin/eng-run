@@ -15,6 +15,10 @@ Every run writes thoughts/shared/runs/<date>-<role>-<target>.md (prompt, full ou
 write a review-findings file in thoughts/shared/verification/ (never terminal only); plan-review links it from
 the plan's plan_review: field when empty. code-review refuses when the reviewer is the slice's implementer
 (run log, else PROJECT_STATE implementer) unless --allow-self-review. --dry-run prints the exact command, writes nothing.
+Permissions: headless runs cannot answer prompts, so implement needs a non-interactive mode. Built-in claude
+implement default is --permission-mode bypassPermissions (acceptEdits alone does NOT auto-approve pytest or
+python3 .eng/bin/eng-check; only file edits + limited filesystem Bash). Reviews stay read-only (--allowedTools).
+Override via [runners.claude] implement_args in .eng/runners.toml.
 Exit code: the runner's exit code (2 usage/config error, 3 self-review refused, 127 runner not found)."""
 import os, re, sys, glob, shlex, shutil, argparse, subprocess
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
@@ -238,7 +242,7 @@ exe = exe_name                      # shown name; replaced by `resolved` only wh
 if prompt_via == "auto":
     prompt_via = "stdin" if (resolved or "").lower().endswith((".cmd", ".bat")) or len(prompt) > 7000 else "arg"
 if rtype == "claude":
-    defaults = {"implement": ["--permission-mode", "acceptEdits"]}.get(a.role, ["--allowedTools", CLAUDE_REVIEW_TOOLS])
+    defaults = {"implement": ["--permission-mode", "bypassPermissions"]}.get(a.role, ["--allowedTools", CLAUDE_REVIEW_TOOLS])
     argv = [exe, "-p"] + ([prompt] if prompt_via == "arg" else []) + ["--output-format", "text"] + extra \
         + as_list(spec.get(role_key, defaults))
     stdin_text = prompt if prompt_via == "stdin" else None

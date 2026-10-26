@@ -18,7 +18,7 @@ Python 3.9+, stdlib only, no dependencies. Install once per machine:
 ```bash
 pipx install git+https://github.com/rowama/eng-process        # or: uv tool install git+https://github.com/rowama/eng-process
 pipx upgrade eng-process                                        # or: uv tool upgrade eng-process
-pipx install git+https://github.com/rowama/eng-process@v2.5.1  # pin a release tag
+pipx install git+https://github.com/rowama/eng-process@v2.5.2  # pin a release tag
 ```
 Then, from a repo root:
 ```bash

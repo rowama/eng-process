@@ -49,7 +49,7 @@ expect 0 "eng-init does not vendor template subdirs as files" bash -c "test ! -e
 
 # dry run
 expect 0 "dry-run plan-review prints exact codex command, writes nothing" bash -c "cd '$RN' && out=\$(python3 .eng/bin/eng-run plan-review $PL --dry-run) && echo \"\$out\" | grep -q '^codex exec --sandbox read-only -o thoughts/shared/runs/.*-plan-review-.*last-message.txt ' && ! ls thoughts/shared/runs/*.md 2>/dev/null | grep -q . && [ ! -s '$FAKE_LOG' ]"
-expect 0 "dry-run implement defaults to claude -p (text, acceptEdits)" bash -c "cd '$RN' && python3 .eng/bin/eng-run implement $PL $SID --dry-run | tr '\\n' ' ' | grep -qE \"claude -p ['\\\"]You are the implementer.*['\\\"] --output-format text --permission-mode acceptEdits\""
+expect 0 "dry-run implement defaults to claude -p (text, bypassPermissions)" bash -c "cd '$RN' && python3 .eng/bin/eng-run implement $PL $SID --dry-run | tr '\\n' ' ' | grep -qE \"claude -p ['\\\"]You are the implementer.*['\\\"] --output-format text --permission-mode bypassPermissions\""
 expect 0 "dry-run code-review --base uses codex review --base" bash -c "cd '$RN' && python3 .eng/bin/eng-run code-review --base develop --dry-run --allow-self-review | grep -qx 'codex review --base develop'"
 expect 0 "env ENG_RUNNER_PLAN_REVIEW overrides config" bash -c "cd '$RN' && ENG_RUNNER_PLAN_REVIEW=claude python3 .eng/bin/eng-run plan-review $PL --dry-run | grep -q '^claude -p '"
 expect 0 "runners.toml [roles] overrides default" bash -c "cp -r '$RN' '$T/rc' && cd '$T/rc' && sed -i 's/^plan-review = .*/plan-review = \"claude\"/' .eng/runners.toml && python3 .eng/bin/eng-run plan-review $PL --dry-run | grep -q '^claude -p '"

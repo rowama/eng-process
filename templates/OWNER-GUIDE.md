@@ -30,3 +30,6 @@ Say "back up to discover" (or to any phase). That's normal, not a failure. The a
 - **ADR (Architecture Decision Record)**: a short numbered note of one durable decision and why, in `docs/decisions/`.
 - **Slice**: one small, end-to-end, demoable piece of work (about 100-200 changed lines).
 - **DoD (Definition of Done)**: the checklist every slice must pass (`docs/definition-of-done.md`).
+
+## Headless implement permissions
+`eng run implement` runs Claude headless, so it needs a non-interactive permission mode. The kit default for implement is `--permission-mode bypassPermissions`; `acceptEdits` is not enough because it does not auto-approve eng-check or pytest. Reviews stay read-only. Override in `.eng/runners.toml` (`[runners.claude] implement_args`).
