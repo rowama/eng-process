@@ -16,6 +16,8 @@ if "--out" in a:
     open(a[a.index("--out") + 1], "w").write("generic tool result\n" + open(a[a.index("--in") + 1]).read()[:40])
 if os.environ.get("FAKE_TOUCH"):   # v2.5: simulate an agent editing a file
     open(os.environ["FAKE_TOUCH"], "a").write("\n# edited by agent\n")
+if os.environ.get("FAKE_SLEEP"):   # v2.5.4: keep running so the pid marker can be observed
+    import time; open(os.environ.get("FAKE_SENTINEL", os.devnull), "a").write("started\n"); time.sleep(float(os.environ["FAKE_SLEEP"]))
 print(os.environ.get("FAKE_STDOUT", "working... done"))
 if "-o" not in a and "--out" not in a and not os.environ.get("FAKE_STDOUT"):
     print(out)

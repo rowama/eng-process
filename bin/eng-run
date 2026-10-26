@@ -289,9 +289,10 @@ def shown(argv):
 
 
 hooks_cfg = cfg.get("hooks", {}) or {}
-hook_cmd = ""
-if a.role == "implement":
-    hook_cmd = str(hooks_cfg.get("implement_on_complete") or hooks_cfg.get("on_complete") or "").strip()
+hook_key = a.role.replace("-", "_") + "_on_complete"   # implement_on_complete, plan_review_on_complete, code_review_on_complete
+hook_cmd = str(hooks_cfg.get(hook_key) or hooks_cfg.get("on_complete") or "").strip()
+marker = run_log[:-3] + ".running.md"   # start-of-run marker: exists while the runner runs (or died abruptly)
+child_pid = 0
 
 
 def latest_handoff():
@@ -308,7 +309,7 @@ def latest_handoff():
 def run_hook(rc):
     env = dict(os.environ, ENG_ROLE=a.role, ENG_EXIT_CODE=str(rc), ENG_STATUS="ok" if rc == 0 else "fail",
                ENG_RUN_LOG=L.rel(run_log, repo), ENG_REPO=repo, ENG_PLAN=ctx["plan"], ENG_SLICE=ctx["slice"],
-               ENG_HANDOFF=latest_handoff())
+               ENG_HANDOFF=latest_handoff(), ENG_PID=str(child_pid or ""), ENG_ENG_RUN_PID=str(os.getpid()))
     print("eng-run: on_complete hook: " + hook_cmd, flush=True)
     try:
         hrc = subprocess.call(hook_cmd, shell=True, cwd=repo, env=env)
@@ -317,7 +318,7 @@ def run_hook(rc):
     else:
         why = "exit %d" % hrc
     if hrc != 0:
-        msg = "on_complete hook failed (%s); implement exit code unchanged (%d)" % (why, rc)
+        msg = "on_complete hook failed (%s); %s exit code unchanged (%d)" % (why, a.role, rc)
         sys.stderr.write("eng-run: WARNING: " + msg + "\n")
         try:
             open(run_log, "a", encoding="utf-8", newline="\n").write("\n## Hook\n- WARNING: %s\n" % msg)
@@ -337,6 +338,7 @@ if a.dry_run:
         print("# review file:  " + ver_rel)
     if hook_cmd:
         print("# on_complete hook (not run): " + hook_cmd)
+    print("# pid marker (not written): %s (child pid + eng-run pid would be captured)" % L.rel(marker, repo))
     print("# dry run: nothing executed, nothing written")
     sys.exit(0)
 
@@ -365,6 +367,15 @@ chunks = []
 try:
     proc = subprocess.Popen([resolved] + argv[1:], cwd=repo, stdin=subprocess.PIPE if stdin_text else subprocess.DEVNULL,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    child_pid = proc.pid
+    try:
+        open(marker, "w", encoding="utf-8", newline="\n").write(
+            "---\nid: RUNNING-%s\ntype: run-marker\nphase: %s\nstatus: running\nowner_agent: eng-run\ndate: %s\nlinks: []\npid: %d\neng_run_pid: %d\nrole: %s\nslice: %s\ntarget: %s\nstarted: %s\nrun_log: %s\n---\n"
+            "# eng-run %s running\nDeleted when eng-run finishes. Present + pid dead = runner died without a run log.\n" % (
+                stem, ROLE_PHASE[a.role], date, child_pid, os.getpid(), a.role, ctx["slice"] if slice_id else "none", target,
+                started.isoformat(timespec="seconds"), L.rel(run_log, repo), a.role))
+    except OSError as e:
+        sys.stderr.write("eng-run: WARNING: could not write pid marker %s: %s\n" % (marker, e))
     if stdin_text:
         proc.stdin.write(stdin_text.encode("utf-8")); proc.stdin.close()
     for raw in iter(proc.stdout.readline, b""):
@@ -468,16 +479,18 @@ links = [x for x in (ctx["plan"], ctx["slice_file"], ver_rel if (ver_rel and rc 
          if x and x not in ("(none)",) and os.path.isfile(os.path.join(repo, x))]
 F = fence(prompt + full + result)
 log = ("---\nid: RUN-%s%s\ntype: run-log\nphase: %s\nstatus: %s\nowner_agent: eng-run\ndate: %s\nlinks: [%s]\n"
-       "role: %s\nrunner: %s\ntool: %s\nslice: %s\nplan: %s\nbase: %s\nexit_code: %d\nstarted: %s\nprompt_template: %s v%s\n---\n"
+       "role: %s\nrunner: %s\ntool: %s\nslice: %s\nplan: %s\nbase: %s\nexit_code: %d\npid: %s\neng_run_pid: %d\nstarted: %s\nprompt_template: %s v%s\n---\n"
        "# eng-run %s %s\n\n## Summary\n%s\n\n## Command\n%s\n%s\n%s\n\n## Prompt\n%s\n%s%s\n\n## Output\n%s\n%s\n%s\n") % (
     stem, "", ROLE_PHASE[a.role], "ok" if rc == 0 else "failed",
     date, ", ".join(links), a.role, rname, tool, ctx["slice"] if slice_id else "none",
-    ctx["plan"] if ctx["plan"] != "(none)" else "none", ctx["base"] or "none", rc, started.isoformat(timespec="seconds"),
+    ctx["plan"] if ctx["plan"] != "(none)" else "none", ctx["base"] or "none", rc, child_pid or "none", os.getpid(), started.isoformat(timespec="seconds"),
     a.role + ".md", prompt_version, a.role, target, safe("\n".join(summary)),
     F, safe(shown(argv)), F, F, safe(prompt), F, F, safe(full.rstrip("\n")) or "(no output)", F)
 if use_out and result and result != full.strip():
     log += "\n## Result (final message, %s)\n%s\n%s\n%s\n" % ("-o file" if rtype == "codex" else "output_file", F, safe(result), F)
 open(run_log, "w", encoding="utf-8", newline="\n").write(log)
+if os.path.isfile(marker):
+    os.remove(marker)
 for p in (out_file, prompt_file):     # their content is in the run log
     if os.path.isfile(p):
         os.remove(p)

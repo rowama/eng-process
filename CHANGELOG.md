@@ -1,5 +1,15 @@
 # Changelog (eng-process kit)
 
+## 2.5.4 - 2026-10-26
+### Added
+- Autonomous-run harness for every `eng-run` role: right after the runner starts, eng-run writes a PID marker `thoughts/shared/runs/<stem>.running.md` (`status: running`, `pid`, `eng_run_pid`, `role`, `slice`, `target`, `started`, `run_log`; valid front matter so eng-check passes mid-run) and deletes it once the finished run log is written. Finished run logs record `pid` and `eng_run_pid`. No marker when the runner fails to start; `--dry-run` prints the marker path and writes nothing.
+- Hook env adds `ENG_PID` (runner child) and `ENG_ENG_RUN_PID`.
+### Changed
+- `[hooks]` now resolve for every role: `<role>_on_complete` (`implement_on_complete`, `plan_review_on_complete`, `code_review_on_complete`) wins, else general `on_complete`, else none. `implement_on_complete` alone still fires only for implement. Hook-failure warning names the role.
+- (process) Wake pair for every autonomous eng-run role: callback hook + effort-based timeout (S/M/L 45m/2h/4h). Timeout classifies via the PID marker: alive = soft ping / one-band extend; dead + run log or handoff = missed callback, resume; dead + nothing = one retry for known project fixes, else hand platform/env/silent-subprocess failures to Ulrik (what failed, exact symptom + paths, tried, machine). PROCESS.md section 10, README, OWNER-GUIDE, eng-implement-slice, eng-plan, eng-verify, runners.toml template aligned.
+### Migration
+- `eng upgrade .` refreshes `.eng/bin/eng-run` and skills. `runners.toml` is project-owned: an existing `on_complete` now also fires after plan-review and code-review; set role keys if you want implement-only. Markers are deleted on finish; a leftover one means a run died.
+
 ## 2.5.3 - 2026-10-26
 ### Changed (process)
 - Planner owns the `eng-run implement` completion signal: whoever starts it stays on the run (or resumes when it exits), reads the new run log + latest handoff / PROJECT_STATE, then continues (eng-verify / CP-S) or surfaces the blocker to Rob. No fire-and-forget. PROCESS.md section 10, eng-implement-slice, eng-plan, README, OWNER-GUIDE aligned.

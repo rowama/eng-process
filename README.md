@@ -18,7 +18,7 @@ Python 3.9+, stdlib only, no dependencies. Install once per machine:
 ```bash
 pipx install git+https://github.com/rowama/eng-process        # or: uv tool install git+https://github.com/rowama/eng-process
 pipx upgrade eng-process                                        # or: uv tool upgrade eng-process
-pipx install git+https://github.com/rowama/eng-process@v2.5.3  # pin a release tag
+pipx install git+https://github.com/rowama/eng-process@v2.5.4  # pin a release tag
 ```
 Then, from a repo root:
 ```bash
@@ -48,7 +48,7 @@ Skills travel with each repo: `eng-init` vendors them into `<repo>/.claude/skill
 2. Run the one skill named in *Next action*. New work starts at `eng-triage`.
 3. Create artifacts only with `eng-new <type> <slug>` (types: design architecture vision adr research market-research brief plan slice handoff review verification retro changelog).
 4. At a checkpoint, add the item to front-matter `pending_approvals` (the only copy) and stop. Rob approves in chat; the agent records it (Approval log + status + ADR if durable) and commits.
-5. Code is written by the `implementer` (default Claude Code on Rob's PC). The planner starts the slice with `.eng/bin/eng-run implement <plan> <slice-id>` (paste prompt from `eng-status` is the interactive fallback), then owns the completion signal: it stays on the run (or is woken by the opt-in `[hooks] implement_on_complete` hook in `.eng/runners.toml`) and picks up from the run log + latest handoff, so Rob never pastes the handoff filename. Codex cross-model review is advisory (PROCESS.md section 10); `.eng/bin/eng-run` runs the implementer and reviewers headless and files their output.
+5. Code is written by the `implementer` (default Claude Code on Rob's PC). The planner starts the slice with `.eng/bin/eng-run implement <plan> <slice-id>` (paste prompt from `eng-status` is the interactive fallback), then owns the completion signal: it stays on the run (or is woken by the opt-in `[hooks] implement_on_complete` hook in `.eng/runners.toml`) and picks up from the run log + latest handoff, so Rob never pastes the handoff filename. v2.5.4: the same wake pair (callback hook via role key or general `on_complete`, plus an effort-based timeout S/M/L 45m/2h/4h) covers plan-review and code-review; eng-run writes a `<stem>.running.md` PID marker while running so a timeout can tell still-running from missed-callback from died-silently (platform failures go to Ulrik; PROCESS.md section 10). Codex cross-model review is advisory (PROCESS.md section 10); `.eng/bin/eng-run` runs the implementer and reviewers headless and files their output.
 6. **Every session ends with `eng-handoff`** and a passing `eng-check .`. It also works as a pre-commit or CI gate (`eng-check . || exit 1`).
 
 Flow: `triage → discover (CP-A) → scope → research (CP-R) → architecture (CP-B) → plan (CP-C) → implement-slice ×N (CP-S each) → verify (CP-D) → ship (CP-P) → retro`. Small tasks: triage → implement-slice → verify → ship. Back up to an earlier phase any time (PROCESS.md 4a).
