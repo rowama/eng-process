@@ -1,5 +1,13 @@
 # Changelog (eng-process kit)
 
+## 2.5.3 - 2026-10-26
+### Changed (process)
+- Planner owns the `eng-run implement` completion signal: whoever starts it stays on the run (or resumes when it exits), reads the new run log + latest handoff / PROJECT_STATE, then continues (eng-verify / CP-S) or surfaces the blocker to Rob. No fire-and-forget. PROCESS.md section 10, eng-implement-slice, eng-plan, README, OWNER-GUIDE aligned.
+### Added
+- Optional `[hooks] implement_on_complete` (alias `on_complete`) in `.eng/runners.toml`: shell command run from the repo root after every implement exit (ok and failed), after the run log is written. Env: `ENG_ROLE ENG_EXIT_CODE ENG_STATUS ENG_RUN_LOG ENG_REPO ENG_PLAN ENG_SLICE ENG_HANDOFF`. `--dry-run` prints it without running. Hook failure warns (stderr + run log) and never changes eng-run's exit code. Empty by default; no network defaults.
+### Migration
+- `eng upgrade .` refreshes `.eng/bin/eng-run` and skills. `runners.toml` is project-owned and not overwritten: add a `[hooks]` table yourself if wanted.
+
 ## 2.5.2 - 2026-10-26
 ### Changed
 - `eng-run implement` with the built-in claude runner now defaults to `--permission-mode bypassPermissions` (was `acceptEdits`). Headless runs cannot answer prompts and acceptEdits does not auto-approve pytest / `python3 .eng/bin/*`, so implement stalled at eng-check. Reviews stay read-only via `--allowedTools`; codex defaults unchanged.

@@ -6,6 +6,15 @@ implement = "claude"
 plan-review = "codex"
 code-review = "codex"
 
+[hooks]
+# Opt-in, empty by default. Shell command run from the repo root after EVERY `eng-run implement` exit
+# (ok and failed/blocked), once the run log is written. Env: ENG_ROLE ENG_EXIT_CODE ENG_STATUS (ok|fail)
+# ENG_RUN_LOG ENG_REPO ENG_PLAN ENG_SLICE ENG_HANDOFF (latest handoff from PROJECT_STATE, if any).
+# Hook failure only warns; eng-run keeps the implement exit code. --dry-run prints it, does not run it.
+# Example: wake the planner (Grok Bot routine webhook) so it resumes from the latest handoff:
+# implement_on_complete = 'curl -fsS -m 20 -X POST --data-urlencode "repo=$ENG_REPO" --data-urlencode "slice=$ENG_SLICE" --data-urlencode "status=$ENG_STATUS" --data-urlencode "run_log=$ENG_RUN_LOG" --data-urlencode "handoff=$ENG_HANDOFF" https://YOUR-ROUTINE-WEBHOOK-URL'
+implement_on_complete = ""
+
 [review]
 base = "main"            # default --base for code-review <slice-id>
 

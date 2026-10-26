@@ -33,3 +33,5 @@ Say "back up to discover" (or to any phase). That's normal, not a failure. The a
 
 ## Headless implement permissions
 `eng run implement` runs Claude headless, so it needs a non-interactive permission mode. The kit default for implement is `--permission-mode bypassPermissions`; `acceptEdits` is not enough because it does not auto-approve eng-check or pytest. Reviews stay read-only. Override in `.eng/runners.toml` (`[runners.claude] implement_args`).
+
+After a headless implement, the agent that started it (or an `on_complete` wake) must pick up: it reads the run log and latest handoff and moves on to verify / CP-S or tells you the blocker. You should not have to paste the handoff filename. To wake a planner that is not attached, set `[hooks] implement_on_complete` in `.eng/runners.toml` (opt-in, empty by default; e.g. curl a Grok Bot routine webhook). It runs on success and failure and never changes eng-run's exit code.

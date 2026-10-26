@@ -1,0 +1,11 @@
+# v2.5.3 tests: implement on_complete hook. Sourced by run-tests.sh after v230 (uses $RN $PL $SID $FK expect).
+HK="$T/hk"; cp -r "$RN" "$HK"
+(cd "$HK" && sed -i '/^\[hooks\]/,/^\[/{/^implement_on_complete/d}' .eng/runners.toml && sed -i '/^\[hooks\]/a implement_on_complete = '"'"'env | grep "^ENG_" | sort > hook.env'"'" .eng/runners.toml)
+expect 0 "on_complete hook runs with ENG_* env after implement" bash -c "cd '$HK' && python3 .eng/bin/eng-run implement $PL $SID >/dev/null && grep -qx 'ENG_ROLE=implement' hook.env && grep -qx 'ENG_EXIT_CODE=0' hook.env && grep -qx 'ENG_STATUS=ok' hook.env && grep -qx 'ENG_SLICE=$SID' hook.env && grep -qx 'ENG_PLAN=$PL' hook.env && grep -q '^ENG_RUN_LOG=thoughts/shared/runs/.*implement' hook.env && grep -q '^ENG_REPO=' hook.env && grep -q '^ENG_HANDOFF=' hook.env && f=\$(sed -n 's/^ENG_RUN_LOG=//p' hook.env) && test -f \"\$f\""
+expect 0 "on_complete hook runs on failure too; exit code is the runner's" bash -c "cd '$HK' && rm -f hook.env && FAKE_RC=5 python3 .eng/bin/eng-run implement $PL $SID >/dev/null; r=\$?; [ \$r = 5 ] && grep -qx 'ENG_STATUS=fail' hook.env && grep -qx 'ENG_EXIT_CODE=5' hook.env"
+expect 0 "dry-run prints the hook, does not run it" bash -c "cd '$HK' && rm -f hook.env && python3 .eng/bin/eng-run implement $PL $SID --dry-run | grep -q '^# on_complete hook (not run): env' && ! test -f hook.env"
+HF="$T/hf"; cp -r "$RN" "$HF"
+(cd "$HF" && sed -i '/^\[hooks\]/a on_complete = "exit 9"' .eng/runners.toml)
+expect 0 "failing hook warns, keeps runner exit code 0, noted in run log" bash -c "cd '$HF' && python3 .eng/bin/eng-run implement $PL $SID >/dev/null 2>e.txt; r=\$?; [ \$r = 0 ] && grep -q 'on_complete hook failed' e.txt && grep -q 'on_complete hook failed' \$(ls -t thoughts/shared/runs/*implement*.md | head -1)"
+expect 0 "failing hook keeps failed runner exit code" bash -c "cd '$HF' && FAKE_RC=4 python3 .eng/bin/eng-run implement $PL $SID >/dev/null 2>&1; [ \$? = 4 ]"
+expect 0 "no hook by default (template empty), code-review never runs hook" bash -c "grep -q '^implement_on_complete = \"\"' '$KIT/templates/runners.toml' && cd '$HK' && rm -f hook.env && python3 .eng/bin/eng-run code-review $SID --allow-self-review >/dev/null 2>&1; ! test -f hook.env"

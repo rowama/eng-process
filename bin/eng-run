@@ -19,6 +19,10 @@ Permissions: headless runs cannot answer prompts, so implement needs a non-inter
 implement default is --permission-mode bypassPermissions (acceptEdits alone does NOT auto-approve pytest or
 python3 .eng/bin/eng-check; only file edits + limited filesystem Bash). Reviews stay read-only (--allowedTools).
 Override via [runners.claude] implement_args in .eng/runners.toml.
+Hook (opt-in, empty by default): [hooks] implement_on_complete (or on_complete) in .eng/runners.toml is a shell
+command run from the repo root after every implement exit (ok or failed), once the run log is written. Env:
+ENG_ROLE ENG_EXIT_CODE ENG_STATUS(ok|fail) ENG_RUN_LOG ENG_REPO ENG_PLAN ENG_SLICE ENG_HANDOFF. --dry-run prints
+it without running it. A failing hook only warns; it never changes eng-run's exit code.
 Exit code: the runner's exit code (2 usage/config error, 3 self-review refused, 127 runner not found)."""
 import os, re, sys, glob, shlex, shutil, argparse, subprocess
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
@@ -284,6 +288,43 @@ def shown(argv):
     return cmd_str(["<prompt: see run log>" if x == prompt else x for x in argv]) + (" < <prompt on stdin>" if stdin_text else "")
 
 
+hooks_cfg = cfg.get("hooks", {}) or {}
+hook_cmd = ""
+if a.role == "implement":
+    hook_cmd = str(hooks_cfg.get("implement_on_complete") or hooks_cfg.get("on_complete") or "").strip()
+
+
+def latest_handoff():
+    try:
+        txt = open(os.path.join(repo, "PROJECT_STATE.md"), encoding="utf-8").read()
+    except OSError:
+        return ""
+    m = re.search(r"(?mi)^-\s*Latest handoff:\s*(.+)$", txt)
+    v = m.group(1).strip().strip("`[]()") if m else ""
+    m2 = re.search(r"[\w./-]*handoffs?/[\w./-]+\.md", v)
+    return m2.group(0) if m2 else ("" if v.lower() in ("", "none") else v)
+
+
+def run_hook(rc):
+    env = dict(os.environ, ENG_ROLE=a.role, ENG_EXIT_CODE=str(rc), ENG_STATUS="ok" if rc == 0 else "fail",
+               ENG_RUN_LOG=L.rel(run_log, repo), ENG_REPO=repo, ENG_PLAN=ctx["plan"], ENG_SLICE=ctx["slice"],
+               ENG_HANDOFF=latest_handoff())
+    print("eng-run: on_complete hook: " + hook_cmd, flush=True)
+    try:
+        hrc = subprocess.call(hook_cmd, shell=True, cwd=repo, env=env)
+    except OSError as e:
+        hrc, why = -1, str(e)
+    else:
+        why = "exit %d" % hrc
+    if hrc != 0:
+        msg = "on_complete hook failed (%s); implement exit code unchanged (%d)" % (why, rc)
+        sys.stderr.write("eng-run: WARNING: " + msg + "\n")
+        try:
+            open(run_log, "a", encoding="utf-8", newline="\n").write("\n## Hook\n- WARNING: %s\n" % msg)
+        except OSError:
+            pass
+
+
 if a.dry_run:
     print("# eng-run %s %s (runner %s, type %s, prompt %s v%s)" % (a.role, " ".join(t), rname, rtype,
           L.posix(os.path.relpath(ptpl, repo)) if ptpl.startswith(repo) else "kit:" + a.role + ".md", prompt_version))
@@ -294,6 +335,8 @@ if a.dry_run:
     print("# run log:      " + L.rel(run_log, repo))
     if ver_rel:
         print("# review file:  " + ver_rel)
+    if hook_cmd:
+        print("# on_complete hook (not run): " + hook_cmd)
     print("# dry run: nothing executed, nothing written")
     sys.exit(0)
 
@@ -444,4 +487,6 @@ if ver_rel and rc == 0:
 for s in summary:
     if s.startswith("- set plan_review") or s.startswith("- plan_review"):
         print("eng-run: " + s[2:])
+if hook_cmd:
+    run_hook(rc)
 sys.exit(rc)
