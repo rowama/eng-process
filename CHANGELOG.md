@@ -2,7 +2,7 @@
 
 ## Unreleased
 ### Added
-- Owner-facing update shape (LESSONS L-007): brief status, then labeled **Action for Rob** numbered steps (one per line; pasteable commands in their own fence) or `No action for you.`; end with the decision owed. Template `templates/owner-update.md`; PROCESS §9, AGENTS, OWNER-GUIDE.
+- Owner-facing update shape (LESSONS L-007): brief status, then labeled **Action for Rob** numbered steps (one per line; pasteable commands in their own fence) or `No action for you.`; end with the decision owed. Never use valid shell syntax as edit placeholders (`$TOKEN`); use `PASTE_…_HERE` or paste-at-prompt. Template `templates/owner-update.md`; PROCESS §9, AGENTS, OWNER-GUIDE.
 
 
 ## 2.5.7 - 2026-10-27

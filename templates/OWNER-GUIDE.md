@@ -23,7 +23,7 @@ You are the only approver. Agents propose; you decide. Everything official is wr
 ## How agents will message you
 Updates that need you use a fixed shape so your actions are easy to spot:
 1. Short status (or none).
-2. A labeled **Action for Rob** list — one step per line; a command to paste sits alone in a code block. If you have nothing to do, you will see `No action for you.`
+2. A labeled **Action for Rob** list — one step per line; a command to paste sits alone in a code block. Placeholders in those commands are obvious non-shell tokens like `PASTE_BOT_TOKEN_HERE` (never `$TOKEN`, which a shell would expand). If you have nothing to do, you will see `No action for you.`
 3. The decision they need from you, when any (approve / defer / needs fixes / hold / a named checkpoint).
 
 They should never bury your todos inside a mixed status/findings paragraph.
