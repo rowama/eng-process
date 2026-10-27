@@ -256,6 +256,24 @@ if triage in ("medium", "large"):
             E(pl, "mandatory plan review: " + msg)
 
 # vendored kit must travel with the repo
+# v2.5.7: wake-pair hooks empty => warn (starter must stay attached; not an error)
+_rt = os.path.join(repo, ".eng", "runners.toml")
+if os.path.isfile(_rt):
+    try:
+        _rcfg = L.load_toml(_rt) or {}
+    except Exception:
+        _rcfg = None
+    if _rcfg is not None:
+        _hk = _rcfg.get("hooks") or {}
+        _keys = ("on_complete", "implement_on_complete", "plan_review_on_complete", "code_review_on_complete")
+        _any = any(str(_hk.get(k) or "").strip() for k in _keys)
+        if not _hk or not _any:
+            W(".eng/runners.toml", "no on_complete hook configured ([hooks] empty or missing) - "
+              "bots must stay attached to eng-run until exit; fire-and-forget needs a non-empty "
+              "on_complete / <role>_on_complete (PROCESS.md section 10, LESSONS L-006)")
+elif os.path.isdir(os.path.join(repo, ".eng")):
+    W(".eng/runners.toml", "missing - eng-run hooks unavailable; create via eng-init or copy templates/runners.toml")
+
 if not os.path.isfile(os.path.join(repo, ".eng", "bin", "eng-check")) or not os.path.isfile(os.path.join(repo, ".eng", "bin", "englib.py")):
     E(".eng/bin", "vendored kit scripts missing (run <kit>/bin/eng-init <repo> --upgrade)")
 if not glob.glob(os.path.join(repo, ".claude", "skills", "eng-*", "SKILL.md")):

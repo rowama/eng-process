@@ -7,8 +7,10 @@ plan-review = "codex"
 code-review = "codex"
 
 [hooks]
-# Opt-in, empty by default. Shell command run from the repo root after EVERY eng-run exit (ok and failed),
-# once the run log is written. Keys (role-specific wins, else general on_complete, else nothing):
+# Empty by default => bots must stay attached to eng-run until exit (eng-run and eng-check warn).
+# Non-empty = fire-and-forget allowed for that role (also set a timeout routine; PROCESS.md §10 / L-006).
+# Shell command from the repo root after EVERY eng-run exit (ok and failed), once the run log is written.
+# Keys (role-specific wins, else general on_complete, else nothing):
 #   implement_on_complete / plan_review_on_complete / code_review_on_complete  - that role only
 #   on_complete                                                                - any role without its own key
 # Env: ENG_ROLE ENG_EXIT_CODE ENG_STATUS (ok|fail) ENG_RUN_LOG ENG_REPO ENG_PLAN ENG_SLICE

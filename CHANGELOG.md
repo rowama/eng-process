@@ -1,15 +1,17 @@
 # Changelog (eng-process kit)
 
 ## Unreleased
-### Changed (process)
-- `push_permission: standing` means after eng-verify PASS, pushes to `main` may proceed without asking; tags and force-push still ask (PROCESS section 10, PROJECT_STATE / AGENTS / eng-ship).
-- **Docs-only commits always push to `main` without asking** (under both `ask` and `standing`); tags and force-push still ask (PROCESS section 10, LESSONS L-004).
-- Planner **starts** mandatory `eng-run plan-review` after the plan is drafted (FYI only; not a Rob paste default). Same autonomy for implement after CP-C and code-review when verifying. eng-status labels the eng-run line as planner-starts; codex exec is fallback (PROCESS section 10, eng-plan, OWNER-GUIDE, LESSONS L-005).
-- Definition of Done template requires default test collection with zero silent skips, and injected/frozen clocks for time/rate tests from slice 1 (LESSONS L-003).
-### Added
-- AGENTS.md template **Runtime facts** section pattern (port, runtime pin, restart MCP client after tool-list deploys). Project values stay project-local; do not restate bypassPermissions.
-- LESSONS L-004 (hypothesis): docs-only commits push without asking.
-- LESSONS L-005 (hypothesis): planner starts plan-review without asking.
+
+## 2.5.7 - 2026-10-27
+### Changed
+- Wake pair harden: **stay attached** to eng-run until exit is the default. Fire-and-forget only when a non-empty `[hooks] on_complete` / `<role>_on_complete` is set (plus a timeout routine). eng-run prints a WARNING when no hook will fire; eng-check warns when `[hooks]` is missing/empty. PROCESS section 10, eng-plan / eng-implement-slice / eng-verify, OWNER-GUIDE, runners.toml comments, LESSONS L-006.
+### Added (process, from Unreleased)
+- `push_permission: standing` = after eng-verify PASS, push `main` without asking; tags/force-push still ask.
+- Docs-only commits always push to `main` without asking (L-004).
+- Planner starts mandatory `eng-run plan-review` after the plan is drafted (FYI; L-005).
+- DoD template: default test collection with zero silent skips; frozen clocks from slice 1 (L-003).
+- AGENTS **Runtime facts** section pattern.
+- LESSONS L-004, L-005, L-006 (hypotheses).
 
 ## 2.5.6 - 2026-10-26
 ### Added

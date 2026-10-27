@@ -103,7 +103,8 @@ if fm.get("triage") in ("medium", "large"):
         print("# planner starts this on the owner's PC (FYI to Rob; do not hand him the command as default):")
         print("   python3 .eng/bin/eng-run plan-review %s" % plan)
         print("   then: disposition findings in %s; set plan_review: %s; ask CP-C when clean" % (out, out))
-        print("# fallback if eng-run/Codex unavailable or Rob drives it:")
+        print("# fallback if eng-run/Codex unavailable or Rob drives it — from the repo root:")
+        print("# from the repo root:")
         print('codex exec "review %s and the slice cards %s against %s (REQ ids), %s and %s '
               'for gaps, wrong ordering, missing tests, and security holes; output a numbered list of '
               'findings with severity" -o %s' % (plan, sglob, design, arch, adr, out))

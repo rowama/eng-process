@@ -43,3 +43,10 @@ approved are listed here; eng-retro proposes them in the retro's "Kit lessons pr
 - Status: hypothesis
 - Approved by Rob: 2026-10-27
 - Evidence: anonymised project, 2026-10-27, planner offered paste/widget instead of starting plan-review; owner expected it to run automatically.
+
+### L-006: When starting eng-run, stay attached until exit unless a non-empty on_complete hook is configured, because empty hooks plus fire-and-forget silently miss completion.
+- Origin: anonymised project, 2026-10-27
+- Confirmations: 1
+- Status: hypothesis
+- Approved by Rob: 2026-10-27
+- Evidence: anonymised project, 2026-10-27, plan-review finished with exit 0 and no wake; runners.toml had no [hooks]; starter had ended the turn.
