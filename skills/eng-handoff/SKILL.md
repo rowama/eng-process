@@ -19,8 +19,9 @@ This skill is the standard session Finish (`.eng/PROCESS.md` section 8). It is n
 3. Record approvals Rob gave in chat this session: Approval log row, artifact status, ADR if durable; remove from `pending_approvals` (front matter only).
 4. Update PROJECT_STATE (phase, active slice, Next action, Blockers, pending approvals, Latest handoff link, owner_agent, date).
 5. **Notes rotation:** if a slice became `done` this session and the owner's review-notes file has notes, `git mv` it to `<slice-id>-<owner>-review-notes.md` and recreate the empty scratch file from `.eng/templates/review-notes.md`.
-6. If you hit process friction, append it to `thoughts/shared/process-feedback.md`.
-7. Commit docs; `.eng/bin/eng-check .` passes.
+6. If an inbox process (eng-inbox) stopped partway, say so in Action Items; never rotate `thoughts/shared/inbox.md` here.
+7. If you hit process friction, append it to `thoughts/shared/process-feedback.md`.
+8. Commit docs; `.eng/bin/eng-check .` passes.
 
 ## Exit criteria
 A cold agent could continue using PROJECT_STATE + this file alone.

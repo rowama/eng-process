@@ -66,9 +66,10 @@ DIRS = ["docs/design", "docs/architecture", "docs/vision", "docs/decisions",
         "thoughts/shared/research", "thoughts/shared/market-research", "thoughts/shared/briefs",
         "thoughts/shared/plans", "thoughts/shared/handoffs", "thoughts/shared/slices",
         "thoughts/shared/verification", "thoughts/shared/retros", "thoughts/shared/review-notes",
-        "thoughts/shared/runs", ".eng/templates"]
+        "thoughts/shared/inbox", "thoughts/shared/runs", ".eng/templates"]
 CHECKED_ROOTS = ["docs/design", "docs/architecture", "docs/vision", "docs/decisions", "thoughts/shared"]
-UNCHECKED_DIRS = ["thoughts/shared/review-notes"]   # owner's scratch files: agents don't edit, no front matter
+UNCHECKED_DIRS = ["thoughts/shared/review-notes", "thoughts/shared/inbox"]
+UNCHECKED_FILES = ["thoughts/shared/inbox.md"]   # v2.5.6 owner inbox: capture-only, no front matter   # owner's scratch files: agents don't edit, no front matter
 PLAN_SECTIONS = [r"^## Overview", r"^## Desired End State", r"^## What We're NOT Doing",
                  r"^## Phase \d+", r"^#### Automated Verification", r"^#### Manual Verification"]
 SEVERITIES = {"critical", "high", "medium", "low"}
@@ -396,7 +397,7 @@ def load_artifacts(repo):
     out = {}
     for p in files:
         r = rel(p, repo)
-        if not os.path.isfile(p) or any(r.startswith(d + "/") for d in UNCHECKED_DIRS):
+        if not os.path.isfile(p) or r in UNCHECKED_FILES or any(r.startswith(d + "/") for d in UNCHECKED_DIRS):
             continue
         out[r] = read_front_matter(p)
     return out

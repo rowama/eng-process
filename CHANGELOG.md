@@ -1,5 +1,13 @@
 # Changelog (eng-process kit)
 
+## 2.5.6 - 2026-10-26
+### Added
+- Owner incoming-thoughts inbox `thoughts/shared/inbox.md` (template `templates/inbox.md`, `## Open` / `## Deferred`). Capture prefixes `note:` `n:` `idea:` `feature:` `future feature:` `ff:` `capture:` `cap:` mean append only. "process incoming" / "check idea log" / "process notes" walks each item with the owner (classify, clarify, move/act, or defer), then archives to `thoughts/shared/inbox/YYYY-MM-DD-HHMM-inbox.md` with per-item status and restarts the live inbox with deferred items (deferral date).
+- New skill `eng-inbox`. PROCESS.md (layout + owner workflow), OWNER-GUIDE, eng-project-init, eng-resume (mentions non-empty inbox, never processes), eng-handoff pointer.
+- eng-init creates the inbox; `--upgrade` creates it when missing or blank and never overwrites existing content. eng-check skips the inbox and its archive (no front matter).
+### Migration
+- `eng upgrade .` creates `thoughts/shared/inbox.md` if missing (not auto-committed: it is a project file; commit it yourself).
+
 ## 2.5.5 - 2026-10-26
 ### Added
 - `eng upgrade .` / `eng-init --upgrade` now makes a kit-only git commit (`chore: eng-process kit upgrade to vX.Y.Z`) staging only `.eng/bin/`, `.eng/templates/`, `.eng/prompts/`, `.eng/PROCESS.md`, `.eng/VERSION`, `.claude/skills/eng-*`, plus `.gitignore` when its eng-process defaults block changed. Never stages `.eng/runners.toml` or project files (OWNER-GUIDE.md, AGENTS.md boilerplate refreshes stay uncommitted). Never pushes. Uses the repo's git identity.

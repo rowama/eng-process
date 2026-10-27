@@ -14,6 +14,7 @@ You are the only approver. Agents propose; you decide. Everything official is wr
 ## Your loop
 1. Open `PROJECT_STATE.md` (or ask for `.eng/bin/eng-status`). Look at **Next action** and **pending approvals**.
 2. Read the artifact named in a pending approval. Jot thoughts in your scratch file `thoughts/shared/review-notes/{{OWNER}}-review-notes.md`. Agents won't touch it until you say "notes ready".
+   Random ideas go in `thoughts/shared/inbox.md`: edit it yourself or start a message with `note:`, `n:`, `idea:`, `feature:`, `future feature:`, `ff:`, `capture:`, or `cap:` and the agent just appends it. Say "process incoming" (or "check idea log" / "process notes") to go through it together: each item gets moved, acted on, or deferred, then the old inbox is archived under `thoughts/shared/inbox/` and a fresh one starts with the deferred items.
 3. Approve or reject in chat. The agent records it in the Approval log, the document's status, and an ADR if the decision is durable, then commits.
 4. When a slice is ready, the planner sends you a short "ready to implement" message with a line to paste into your coding agent.
 5. After coding, an independent review (Codex) may add findings. They are advice. You decide at the slice and Done checkpoints. Reviews are always saved as files in `thoughts/shared/verification/`.

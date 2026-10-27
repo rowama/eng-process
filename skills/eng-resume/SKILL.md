@@ -17,7 +17,8 @@ This skill is the standard session Start (`.eng/PROCESS.md` section 8). It ends 
 2. Read PROJECT_STATE fully, then the latest handoff fully. Read its Critical References directly.
 3. Verify the handoff's Recent changes exist (`git log`, `git status`, open the cited file:line).
 4. If a pending approval is one the next skill needs, or readiness is NOT READY: report to Rob and stop (suggest eng-triage readiness check).
-5. State: phase, next skill, discrepancies. Then run that skill in this session only if context is still small.
+5. If `thoughts/shared/inbox.md` has items under `## Open` or `## Deferred`, mention the count to Rob ("N inbox items; say process incoming to go through them"). Do not process them unless asked (eng-inbox).
+6. State: phase, next skill, discrepancies. Then run that skill in this session only if context is still small.
 
 ## Exit criteria
 Agent can state the phase, next skill, and blockers from files alone; discrepancies recorded.

@@ -12,7 +12,7 @@ Session: starts fresh with only the repo's top-level listing, README and build f
 - Kit source: wherever the planner keeps it (`<kit>/bin/eng-init`). After init everything is vendored in the repo: `.eng/bin/`, `.eng/templates/`, `.eng/PROCESS.md`, `.eng/VERSION`, `.claude/skills/eng-*/SKILL.md`
 
 ## Outputs
-- Everything `eng-init` scaffolds (PROCESS.md section 1), including `OWNER-GUIDE.md`, `thoughts/shared/process-feedback.md`, and the owner's scratch file under `thoughts/shared/review-notes/`
+- Everything `eng-init` scaffolds (PROCESS.md section 1), including `OWNER-GUIDE.md`, `thoughts/shared/process-feedback.md`, the owner's scratch file under `thoughts/shared/review-notes/`, and the owner inbox `thoughts/shared/inbox.md` (v2.5.6, see eng-inbox)
 - Brownfield: migrated docs, ADRs renamed to `NNNN-slug.md`, back-filled Approval log
 
 ## Steps

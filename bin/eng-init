@@ -209,6 +209,7 @@ def _split_fm(t):
 
 date = L.now().strftime("%Y-%m-%d")
 owner = re.sub(r"[^a-z0-9-]+", "-", a.owner.lower()).strip("-") or "owner"
+INBOX = "thoughts/shared/inbox.md"
 files = {"PROJECT_STATE.md": "PROJECT_STATE.md", "AGENTS.md": "AGENTS.md", "CLAUDE.md": "CLAUDE.md",
          "CHANGELOG.md": "CHANGELOG.md", "TODOS.md": "TODOS.md", "OWNER-GUIDE.md": "OWNER-GUIDE.md",
          "docs/definition-of-done.md": "definition-of-done.md",
@@ -254,6 +255,12 @@ if a.upgrade:
             e = t.find("\n---", 4)
             open(pth, "w", encoding="utf-8", newline="\n").write(t[:e] + "\nplan_review:" + t[e:])
             print("add     plan_review: to " + L.rel(pth, repo))
+    # v2.5.6 owner inbox: create when missing or blank; never touch existing content
+    _ib = os.path.join(repo, INBOX)
+    if not os.path.isfile(_ib) or not open(_ib, encoding="utf-8", errors="replace").read().strip():
+        os.makedirs(os.path.dirname(_ib), exist_ok=True)
+        open(_ib, "w", encoding="utf-8", newline="\n").write(open(os.path.join(tdir, "inbox.md"), encoding="utf-8").read())
+        print("create  " + INBOX + " (owner inbox; commit it yourself)")
     ti = tracked_ignored(repo)
     if ti:
         print("\nTracked files now matched by .gitignore (still in git). Review, then run yourself (not run by eng-init):")
@@ -267,7 +274,7 @@ if a.upgrade:
     sys.exit(0)
 
 sp = os.path.join(repo, "PROJECT_STATE.md")
-for dst, src in files.items():
+for dst, src in list(files.items()) + [(INBOX, "inbox.md")]:
     p = os.path.join(repo, dst)
     if os.path.exists(p) and not a.force:
         print("keep    " + dst)
