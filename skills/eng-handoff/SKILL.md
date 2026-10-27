@@ -27,4 +27,4 @@ This skill is the standard session Finish (`.eng/PROCESS.md` section 8). It is n
 A cold agent could continue using PROJECT_STATE + this file alone.
 
 ## Approval stop (Rob)
-None; it records approvals requested by other skills.
+None; it records approvals requested by other skills. When you message Rob about a stop or next step, use `.eng/templates/owner-update.md` (LESSONS L-007): status, then **Action for Rob** / `No action for you.`, then the decision owed.

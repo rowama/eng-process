@@ -50,3 +50,11 @@ approved are listed here; eng-retro proposes them in the retro's "Kit lessons pr
 - Status: hypothesis
 - Approved by Rob: 2026-10-27
 - Evidence: anonymised project, 2026-10-27, plan-review finished with exit 0 and no wake; runners.toml had no [hooks]; starter had ended the turn.
+
+### L-007: When messaging the owner with work he must do, separate brief status prose from a labeled Action-for-Rob numbered list (one step per line; pasteable commands in their own fence) and end with the decision he owes, because mixed status/findings/todo paragraphs hide what he is supposed to do.
+- Origin: anonymised project, 2026-10-27
+- Confirmations: 1
+- Status: hypothesis
+- Approved by Rob: 2026-10-27
+- Evidence: anonymised project, 2026-10-27, owner could not sort action items out of mixed status/review paragraphs; confirmed the labeled Action-for-Rob numbered-list shape works for multi-step work.
+

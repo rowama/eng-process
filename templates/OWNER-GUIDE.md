@@ -20,6 +20,14 @@ You are the only approver. Agents propose; you decide. Everything official is wr
 5. After coding, an independent review (Codex) may add findings. They are advice. You decide at the slice and Done checkpoints. Reviews are always saved as files in `thoughts/shared/verification/`.
 6. Headless steps on your PC: `python3 .eng/bin/eng-run plan-review <plan>`, `implement <plan> <slice-id>`, `code-review <slice-id>`. Add `--dry-run` to preview. The planner starts plan-review (after the plan is drafted), implement (after CP-C), and code-review (when the slice is ready to verify) by default and tells you as FYI — you are not the default runner. Say yes only for ad-hoc runs outside those paths, or if you want to drive one yourself.
 
+## How agents will message you
+Updates that need you use a fixed shape so your actions are easy to spot:
+1. Short status (or none).
+2. A labeled **Action for Rob** list — one step per line; a command to paste sits alone in a code block. If you have nothing to do, you will see `No action for you.`
+3. The decision they need from you, when any (approve / defer / needs fixes / hold / a named checkpoint).
+
+They should never bury your todos inside a mixed status/findings paragraph.
+
 ## When something looks wrong
 Say "back up to discover" (or to any phase). That's normal, not a failure. The agent revises the documents and writes down why.
 

@@ -20,6 +20,7 @@ The values live in `PROJECT_STATE.md` front matter (`implementer`, `planner`, `c
 - **Cross-model review** (Codex) is advisory, never a gate. See `.eng/PROCESS.md` section 10.
 - **Push:** follow `push_permission` (default `ask`). With `standing`, after eng-verify PASS you may push to `main` without asking. **Docs-only commits always push to `main` without asking** (both modes). Tags and force-push still ask. Never merge without the owner.
 - **Owner review notes** (`thoughts/shared/review-notes/`) belong to the owner. Agents never edit them until the owner says they are ready.
+- **Owner-facing updates:** brief status prose (or skip), then a labeled `**Action for Rob**` numbered list (one step per line; pasteable commands in their own fence) or `No action for you.`; end with the decision he owes. Never mix his todos into a status/findings paragraph. See `.eng/templates/owner-update.md` (LESSONS L-007).
 
 ## Commands
 - Install:  `<cmd>`
