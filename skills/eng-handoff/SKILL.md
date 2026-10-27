@@ -20,7 +20,7 @@ This skill is the standard session Finish (`.eng/PROCESS.md` section 8). It is n
 4. Update PROJECT_STATE (phase, active slice, Next action, Blockers, pending approvals, Latest handoff link, owner_agent, date).
 5. **Notes rotation:** if a slice became `done` this session and the owner's review-notes file has notes, `git mv` it to `<slice-id>-<owner>-review-notes.md` and recreate the empty scratch file from `.eng/templates/review-notes.md`.
 6. If an inbox process (eng-inbox) stopped partway, say so in Action Items; never rotate `thoughts/shared/inbox.md` here.
-7. If you hit process friction, append it to `thoughts/shared/process-feedback.md`.
+7. If you hit process friction, append it to `thoughts/shared/process-feedback.md` now, in-session (the retro pass reads that log, not handoffs).
 8. Commit docs; `.eng/bin/eng-check .` passes.
 
 ## Exit criteria

@@ -8,3 +8,24 @@ approved are listed here; eng-retro proposes them in the retro's "Kit lessons pr
 ## Confirmed
 
 ## Hypotheses
+
+### L-001: When a headless implementer run starts, preflight that gate commands (eng-check, test runner) actually run under the configured permission mode before taking the slice, because a mis-set implement_args / acceptEdits override still burns a full run.
+- Origin: anonymised project v0.2.0 retro, 2026-10-26
+- Confirmations: 1
+- Status: hypothesis
+- Approved by Rob: 2026-10-26
+- Evidence: anonymised project, 2026-10-26, a permission-mode override blocked gate commands and a full implementer run was wasted.
+
+### L-002: When a project ships trunk-based (main + tag), CP-P may name the tag/commit instead of a PR URL, because eng-ship/PROCESS still shape CP-P as PR merge and force improvisation on trunk+tag projects.
+- Origin: anonymised project v0.2.0 retro, 2026-10-26
+- Confirmations: 1
+- Status: hypothesis
+- Approved by Rob: 2026-10-26
+- Evidence: anonymised project, 2026-10-26, CP-P had to be improvised for a main + tag release.
+
+### L-003: When code has time- or rate-based behaviour, inject the clock in tests from slice 1, because wall-clock tests flake intermittently and are found late.
+- Origin: anonymised project v0.2.0 retro, 2026-10-26
+- Confirmations: 1
+- Status: hypothesis
+- Approved by Rob: 2026-10-26
+- Evidence: anonymised project, 2026-10-26, wall-clock-dependent tests flaked intermittently and were found late.

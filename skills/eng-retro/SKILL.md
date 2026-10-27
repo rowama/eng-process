@@ -15,7 +15,7 @@ Session: standard Start/Finish per `.eng/PROCESS.md` section 8 (kit: `PROCESS.md
 - Edits to `AGENTS.md`, `docs/definition-of-done.md`, `.eng/templates/*` as agreed; kit-level suggestions collected for the kit maintainer (never project details)
 
 ## Steps
-1. **Process-improvement pass (also in every advisor consultation):** read `process-feedback.md` and the previous retros. For each open entry: adopt (becomes a change below), reject (why), or defer. Mark handled entries in the log.
+1. **Process-improvement pass (also in every advisor consultation):** read `process-feedback.md` and the previous retros. For each open entry: adopt (becomes a change below), reject (why), or defer. Mark handled entries in the log. Friction only mentioned in handoffs is not seen here, so agents must log it in `process-feedback.md` in-session.
 2. **Score past predictions:** for every ADR, consultation note and previous retro entry with *Expected outcome / Check date / What would prove it wrong* whose check date has passed, score it **right / wrong / unclear** with one line of evidence (retro table + the entry's `Score:` line). Record new predictions for recommendations made now.
 3. **Review hit-rate:** from `thoughts/shared/verification/*review*.md` since the last retro: findings total, accepted (fixed / accepted-risk) vs rejected, real bugs caught, rejected rows with evidence (file:line or test).
 4. **Design adoption:** read the *Design adoption* section of `process-feedback.md`. Informed-owner skips are not counted. Two counted non-safety skips of the same step -> write a **redesign flag** for that step. Any safety-gate skip (personal data, mandatory plan review, CP approvals) -> escalate to Rob now, don't wait for the retro to finish.
