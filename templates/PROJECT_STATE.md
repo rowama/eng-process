@@ -17,6 +17,7 @@ planner: grok-bot             # who plans, writes docs, keeps state and process
 cross_review: codex-advisory  # codex-advisory | none  (advisory, never a gate)
 push_permission: ask          # ask | standing (after eng-verify PASS: push main OK; docs-only always OK; tags/force-push still ask)
 board: none                   # none | vikunja (optional, board only; repo stays the source of truth)
+# Optional: kit_upgrade: deferred <reason>  -> eng-resume skips the "eng upgrade ." ask when .eng/VERSION is older than the kit.
 ---
 # PROJECT_STATE
 
@@ -46,12 +47,17 @@ See `pending_approvals` in the front matter (the only copy; `.eng/bin/eng-status
 none
 
 ## Latest artifacts
-<!-- Relative links only; .eng/bin/eng-check verifies they resolve. -->
+<!-- Current increment / in-play artifacts ONLY, plus the standing links below. Relative links only; .eng/bin/eng-check
+     verifies they resolve and warns when this section has more than 12 links. Move finished increments to ## Prior increments. -->
 - Conventions: [AGENTS.md](AGENTS.md)
 - Owner guide: [OWNER-GUIDE.md](OWNER-GUIDE.md)
 - Definition of Done: [docs/definition-of-done.md](docs/definition-of-done.md)
 - Process feedback: [thoughts/shared/process-feedback.md](thoughts/shared/process-feedback.md)
 - Latest handoff: none
+
+## Prior increments
+<!-- Optional. Links for shipped/finished increments. eng-resume does not need to read this section. -->
+none
 
 ## Approval log
 <!-- One row per decision. Artifact cell names the file path(s). Decision: approved | accepted | partially accepted | deferred | rejected.

@@ -4,7 +4,7 @@ description: Independently verify the implementation against the plan and the De
 ---
 # eng-verify
 
-Session: standard Start/Finish per `.eng/PROCESS.md` section 8 (kit: `PROCESS.md`). Scripts: `.eng/bin/eng-check`, `.eng/bin/eng-status`, `.eng/bin/eng-new`.
+Session: standard. **Start:** read only `PROJECT_STATE.md`, the latest handoff it links, and this skill's Inputs; run `.eng/bin/eng-check .` and stop and report if it fails for a reason this skill must not fix; stop if `pending_approvals` holds a checkpoint this skill needs. **Finish:** run eng-handoff (updates PROJECT_STATE phase / active_slice / pending_approvals / owner_agent / date / Next action / Blockers / Latest artifacts, writes the handoff, eng-check must pass, commits docs). Edge cases: `.eng/PROCESS.md` section 8. Scripts: `.eng/bin/eng-check`, `.eng/bin/eng-status`, `.eng/bin/eng-new`.
 
 ## Inputs (files only)
 - Plan, slice cards, `docs/definition-of-done.md`, the implementer's latest handoff
@@ -32,3 +32,4 @@ Per slice: **CP-S** `CP-S: <slice path> - manual verification`. Increment: **CP-
 
 ## Finish
 Standard: end with eng-handoff.
+5. See PROCESS §10.

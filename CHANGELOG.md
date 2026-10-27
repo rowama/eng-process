@@ -1,7 +1,16 @@
 # Changelog (eng-process kit)
 
 ## Unreleased
-### Added
+
+## 2.5.8 - 2026-10-27
+### Added (measurable-only plan, Rob-approved via Winston)
+- PROJECT_STATE `## Latest artifacts` holds the current increment / in-play artifacts plus standing links only; optional `## Prior increments` (eng-resume does not read it). eng-check warns above 12 in-play links (`LATEST_ARTIFACTS_MAX_LINKS`). PROCESS section 8.
+- Approval log size trigger: eng-check warns (and eng-status reports) when the `## Approval log` table has more than 40 rows or the section exceeds 3072 bytes. When this fires on an active project, reopen the Approval-log archive design; eng-check must then treat the archive as part of the log. **No archive is built in this release.**
+- eng-resume: stale vendored kit (`.eng/VERSION` older than the kit) is surfaced once per session as an L-007 **Action for Rob** (`eng upgrade .`), skipped when `kit_upgrade: deferred` is set in PROJECT_STATE front matter or `thoughts/shared/process-feedback.md`. Never an eng-check error.
+- AGENTS template: mandatory plan review is a gate for medium/large; slice/architecture cross-model reviews stay advisory.
+- eng-plan / eng-implement-slice / eng-verify carry the session Start/Finish happy path inline; PROCESS stays normative for edge cases. Kit test fails on bare see-PROCESS pointer lines in those skills.
+- PROCESS.md and README.md H1 carry the kit version; kit test fails when they drift from VERSION.
+### Added (process, shipped on main before this tag; first tagged here)
 - Risk-mitigation decision gate (LESSONS L-008): when the agent uncovers a risk and would mitigate it in design/architecture/plan, stop with **Decision needed** (risk, friction/ops cost, narrower alternative) before baking it in. `templates/owner-update.md`, PROCESS §9, AGENTS, OWNER-GUIDE, eng-discover / eng-architecture-review / eng-plan.
 - Owner-facing update shape (LESSONS L-007): brief status, then labeled **Action for Rob** numbered steps (one per line; pasteable commands in their own fence) or `No action for you.`; end with the decision owed. Never use valid shell syntax as edit placeholders (`$TOKEN`); use `PASTE_…_HERE` or paste-at-prompt. Template `templates/owner-update.md`; PROCESS §9, AGENTS, OWNER-GUIDE.
 

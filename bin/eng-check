@@ -289,6 +289,19 @@ for kv in _kits:
         W(".eng/VERSION", "vendored kit v%s is older than kit v%s (run <kit>/bin/eng-init <repo> --upgrade)" % (_rv, kv))
         break
 
+# v2.5.8 measurable-only warn thresholds (tunable)
+LATEST_ARTIFACTS_MAX_LINKS = 12      # in-play links under ## Latest artifacts (before ## Prior increments)
+APPROVAL_LOG_MAX_LINES = 40          # ## Approval log table body rows
+APPROVAL_LOG_MAX_BYTES = 3072        # ## Approval log section bytes
+if exists("PROJECT_STATE.md"):
+    _n_links, _al = L.state_size_metrics(open(os.path.join(repo, "PROJECT_STATE.md"), encoding="utf-8", errors="replace").read())
+    if _n_links > LATEST_ARTIFACTS_MAX_LINKS:
+        W("PROJECT_STATE.md", "## Latest artifacts has %d in-play links (> %d) - keep only the current increment + standing links; "
+          "move older ones under ## Prior increments (PROCESS.md section 8)" % (_n_links, LATEST_ARTIFACTS_MAX_LINKS))
+    if _al[0] > APPROVAL_LOG_MAX_LINES or _al[1] > APPROVAL_LOG_MAX_BYTES:
+        W("PROJECT_STATE.md", "## Approval log is %d rows / %d bytes (> %d rows or > %d bytes) - reopen the Approval-log archive "
+          "design (CHANGELOG 2.5.8); no archive exists yet" % (_al[0], _al[1], APPROVAL_LOG_MAX_LINES, APPROVAL_LOG_MAX_BYTES))
+
 # changelog placeholders
 if exists("CHANGELOG.md"):
     for n, line in enumerate(open(os.path.join(repo, "CHANGELOG.md"), encoding="utf-8", errors="replace"), 1):

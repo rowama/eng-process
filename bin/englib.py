@@ -693,3 +693,28 @@ def spec_node_problem(repo, node):
     if name and not re.search(r"(?m)^\s*(async\s+)?def\s+%s\s*\(" % re.escape(name), open(full, encoding="utf-8", errors="replace").read()):
         return "spec %s has no test function '%s'" % (path, name)
     return None
+
+
+def _h2_section(text, title):
+    """Lines of the H2 section `## title` (exclusive of heading) up to the next H2."""
+    out, on = [], False
+    for line in text.splitlines():
+        if re.match(r"^## ", line):
+            if on: break
+            on = line.strip() == "## " + title
+            continue
+        if on: out.append(line)
+    return out
+
+def state_size_metrics(text):
+    """(in-play link count under ## Latest artifacts, (approval-log rows, approval-log bytes)). v2.5.8."""
+    body = re.sub(r"<!--.*?-->", "", text, flags=re.S)
+    links = 0
+    for line in _h2_section(body, "Latest artifacts"):
+        if not line.strip(): continue
+        links += len(re.findall(r"\[[^\]]*\]\([^)]+\)", line))
+    al = _h2_section(text, "Approval log")
+    rows = [l for l in al if l.strip().startswith("|")]
+    data = [l for l in rows[2:]] if len(rows) >= 2 else rows
+    data = [l for l in data if not re.match(r"^\s*\|[\s|:-]+\|\s*$", l)]
+    return links, (len(data), len("\n".join(al).encode("utf-8")))

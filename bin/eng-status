@@ -29,6 +29,11 @@ pend = L.pending_list(fm)
 print("pending approvals: %s" % ("none" if not pend else ""))
 for p in pend:
     print("  - " + p)
+_sp = os.path.join(repo, "PROJECT_STATE.md")
+if os.path.isfile(_sp):
+    _nl, (_ar, _ab) = L.state_size_metrics(open(_sp, encoding="utf-8", errors="replace").read())
+    print("state size: latest-artifacts links=%d  approval-log rows=%d bytes=%d%s" % (_nl, _ar, _ab,
+          "  (WARN: approval log > 40 rows or > 3072 bytes; reopen archive design)" if _ar > 40 or _ab > 3072 else ""))
 for s in ("Next action", "Blockers"):
     print("%s: %s" % (s.lower(), sec(s).replace("\n", " | ")[:200]))
 miss = L.readiness(arts, fm.get("phase"), fm.get("triage"))
