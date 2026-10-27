@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 2.5.9 - 2026-10-27
+### Fixed
+- Remove stray negative-test line (`See PROCESS §10.`) accidentally left in `skills/eng-verify/SKILL.md` on the v2.5.8 tag. Install `@v2.5.9` (or main tip); do not use the broken v2.5.8 tag commit for upgrades.
+
+
 ## 2.5.8 - 2026-10-27
 ### Added (measurable-only plan, Rob-approved via Winston)
 - PROJECT_STATE `## Latest artifacts` holds the current increment / in-play artifacts plus standing links only; optional `## Prior increments` (eng-resume does not read it). eng-check warns above 12 in-play links (`LATEST_ARTIFACTS_MAX_LINKS`). PROCESS section 8.

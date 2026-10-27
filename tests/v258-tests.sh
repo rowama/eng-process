@@ -1,6 +1,6 @@
-# v2.5.8 tests: measurable-only process items. Sourced by run-tests.sh after v257.
+# v2.5.9 tests: measurable-only process items. Sourced by run-tests.sh after v257.
 V258="$T/v258"; rm -rf "$V258"; python3 "$KIT/bin/eng-init" "$V258" >/dev/null
-expect 0 "VERSION 2.5.8; README pins @v2.5.8" bash -c "grep -qx '2.5.8' '$KIT/VERSION' && grep -q '@v2.5.8' '$KIT/README.md'"
+expect 0 "VERSION 2.5.9; README pins @v2.5.9" bash -c "grep -qx '2.5.9' '$KIT/VERSION' && grep -q '@v2.5.9' '$KIT/README.md'"
 # Version banners: PROCESS/README H1 must carry the VERSION file value.
 expect 0 "PROCESS.md and README.md H1 match VERSION" bash -c "v=\$(cat '$KIT/VERSION'); head -1 '$KIT/PROCESS.md' | grep -qF \"kit v\$v)\" && head -1 '$KIT/README.md' | grep -qF \"(v\$v,\""
 expect 0 "fresh project: no latest-artifacts / approval-log warn" bash -c "! python3 '$KIT/bin/eng-check' '$V258' 2>&1 | grep -qE 'Latest artifacts has|Approval log is'"

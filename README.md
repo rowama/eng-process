@@ -1,4 +1,4 @@
-# eng-process kit (v2.5.8, see [CHANGELOG.md](CHANGELOG.md))
+# eng-process kit (v2.5.9, see [CHANGELOG.md](CHANGELOG.md))
 
 A project-agnostic, file-based engineering process for one human approver (Rob) and several interchangeable AI agents. Every step is a skill with file inputs, file outputs, exit criteria, and an approval stop; all state lives in the repo so any agent can resume cold.
 
@@ -18,7 +18,7 @@ Python 3.9+, stdlib only, no dependencies. Install once per machine:
 ```bash
 pipx install git+https://github.com/rowama/eng-process        # or: uv tool install git+https://github.com/rowama/eng-process
 pipx upgrade eng-process                                        # or: uv tool upgrade eng-process
-pipx install git+https://github.com/rowama/eng-process@v2.5.8  # pin a release tag
+pipx install git+https://github.com/rowama/eng-process@v2.5.9  # pin a release tag
 ```
 Then, from a repo root:
 ```bash

@@ -1,4 +1,4 @@
-# Engineering Process (canonical, kit v2.5.8)
+# Engineering Process (canonical, kit v2.5.9)
 
 One human approver (Rob, "the owner"), several interchangeable AI agents. **All state lives in files; the repo is the single source of truth.** Any agent must be able to pick up the project from `PROJECT_STATE.md` + the latest handoff alone. This file is the only place the phase-to-skill routing lives (section 3); `AGENTS.md` and skills reference it, and `.eng/PROCESS.md` is a pinned read-only copy written by `eng-init`.
 
