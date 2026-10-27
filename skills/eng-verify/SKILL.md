@@ -32,4 +32,3 @@ Per slice: **CP-S** `CP-S: <slice path> - manual verification`. Increment: **CP-
 
 ## Finish
 Standard: end with eng-handoff.
-5. See PROCESS §10.
