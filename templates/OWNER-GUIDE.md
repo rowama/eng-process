@@ -32,7 +32,7 @@ Say "back up to discover" (or to any phase). That's normal, not a failure. The a
 - **Slice**: one small, end-to-end, demoable piece of work (about 100-200 changed lines).
 - **DoD (Definition of Done)**: the checklist every slice must pass (`docs/definition-of-done.md`).
 - **Runtime facts** (in `AGENTS.md`): short live values agents need (port, runtime pin, MCP restart after tool-list deploys). Project-specific numbers stay in that project's AGENTS; the section pattern comes from the kit.
-- **Push permission** (`push_permission` in PROJECT_STATE): `ask` (default) or `standing`. With standing, after eng-verify PASS agents may push to `main` without asking; tags and force-push still need you.
+- **Push permission** (`push_permission` in PROJECT_STATE): `ask` (default) or `standing`. With standing, after eng-verify PASS agents may push to `main` without asking. **Docs-only commits always push without asking.** Tags and force-push still need you.
 
 ## Headless implement permissions
 `eng run implement` runs Claude headless, so it needs a non-interactive permission mode. The kit default for implement is `--permission-mode bypassPermissions`; `acceptEdits` is not enough because it does not auto-approve eng-check or pytest. Reviews stay read-only. Override in `.eng/runners.toml` (`[runners.claude] implement_args`).

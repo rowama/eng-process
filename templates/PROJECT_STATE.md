@@ -15,7 +15,7 @@ pending_approvals: []
 implementer: claude-code      # who writes code (default: Claude Code on the owner's PC)
 planner: grok-bot             # who plans, writes docs, keeps state and process
 cross_review: codex-advisory  # codex-advisory | none  (advisory, never a gate)
-push_permission: ask          # ask | standing (after eng-verify PASS: push main OK; tags/force-push still ask)
+push_permission: ask          # ask | standing (after eng-verify PASS: push main OK; docs-only always OK; tags/force-push still ask)
 board: none                   # none | vikunja (optional, board only; repo stays the source of truth)
 ---
 # PROJECT_STATE

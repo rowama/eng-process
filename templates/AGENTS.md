@@ -18,7 +18,7 @@ The values live in `PROJECT_STATE.md` front matter (`implementer`, `planner`, `c
 - The **planner** agent plans, writes docs, keeps state and process. It does not write production code.
 - The **implementer** (default: Claude Code on the owner's PC) codes one slice at a time. When a slice is ready, the planner sends the owner the "ready to implement" message (`.eng/bin/eng-status` prints it), then afterwards picks up the implementer's handoff and runs `eng-verify` and `.eng/bin/eng-check`.
 - **Cross-model review** (Codex) is advisory, never a gate. See `.eng/PROCESS.md` section 10.
-- **Push:** follow `push_permission` (default `ask`). With `standing`, after eng-verify PASS you may push to `main` without asking; tags and force-push still ask. Never merge without the owner.
+- **Push:** follow `push_permission` (default `ask`). With `standing`, after eng-verify PASS you may push to `main` without asking. **Docs-only commits always push to `main` without asking** (both modes). Tags and force-push still ask. Never merge without the owner.
 - **Owner review notes** (`thoughts/shared/review-notes/`) belong to the owner. Agents never edit them until the owner says they are ready.
 
 ## Commands

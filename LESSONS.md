@@ -29,3 +29,10 @@ approved are listed here; eng-retro proposes them in the retro's "Kit lessons pr
 - Status: hypothesis
 - Approved by Rob: 2026-10-26
 - Evidence: anonymised project, 2026-10-26, wall-clock-dependent tests flaked intermittently and were found late.
+
+### L-004: When a commit is documentation-only, push it to main without asking, because waiting for push OK on prose stalls the process loop for no code risk.
+- Origin: anonymised project / kit docs cycle, 2026-10-26
+- Confirmations: 1
+- Status: hypothesis
+- Approved by Rob: 2026-10-26
+- Evidence: anonymised project / kit, 2026-10-26, docs-only process commits sat waiting for push OK after the change was already approved.

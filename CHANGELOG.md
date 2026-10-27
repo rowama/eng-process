@@ -3,9 +3,11 @@
 ## Unreleased
 ### Changed (process)
 - `push_permission: standing` means after eng-verify PASS, pushes to `main` may proceed without asking; tags and force-push still ask (PROCESS section 10, PROJECT_STATE / AGENTS / eng-ship).
+- **Docs-only commits always push to `main` without asking** (under both `ask` and `standing`); tags and force-push still ask (PROCESS section 10, LESSONS L-004).
 - Definition of Done template requires default test collection with zero silent skips, and injected/frozen clocks for time/rate tests from slice 1 (LESSONS L-003).
 ### Added
 - AGENTS.md template **Runtime facts** section pattern (port, runtime pin, restart MCP client after tool-list deploys). Project values stay project-local; do not restate bypassPermissions.
+- LESSONS L-004 (hypothesis): docs-only commits push without asking.
 
 ## 2.5.6 - 2026-10-26
 ### Added
