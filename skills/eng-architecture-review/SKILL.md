@@ -21,6 +21,7 @@ Session: standard Start/Finish per `.eng/PROCESS.md` section 8 (kit: `PROCESS.md
 3. For each error: trigger, handler, user-visible result, test. No silent failures.
 4. Plan rollback, partial deploy, feature flags; observability is in scope.
 5. Quick STRIDE pass for security-relevant changes.
+5a. **Risk you uncovered (L-008):** blast-radius limits, extra gates, or cross-cutting controls that exist to mitigate a risk **you** found need **Decision needed** first (name risk, friction/ops cost, narrower alternative). Soft acknowledgment is not approval of that cost. See `.eng/templates/owner-update.md`.
 6. **Standing question (always, for any UI):** *Can the owner judge this frontend's behaviour and code? If not, what reduces that gap?* (e.g. demo script, storybook/screenshots, simpler stack, opt-in CI checks from `.eng/templates/ci-checklist.md`). Answer it in the doc.
 7. One ADR per durable choice, status `proposed`, with Expected outcome / Check date / What would prove it wrong. Use `deferred` (+ `revisit:`) for consciously postponed decisions.
 7a. **Large work (v2.5):** decide the acceptance-test channels and how the system under test is deployed for them (production-like, external systems stubbed at its boundary). Default: API driver for every spec plus one Playwright web journey. Record it as an ADR from `.eng/templates/adr-acceptance-tests.md` (PROCESS.md 13).

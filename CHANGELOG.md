@@ -2,6 +2,7 @@
 
 ## Unreleased
 ### Added
+- Risk-mitigation decision gate (LESSONS L-008): when the agent uncovers a risk and would mitigate it in design/architecture/plan, stop with **Decision needed** (risk, friction/ops cost, narrower alternative) before baking it in. `templates/owner-update.md`, PROCESS §9, AGENTS, OWNER-GUIDE, eng-discover / eng-architecture-review / eng-plan.
 - Owner-facing update shape (LESSONS L-007): brief status, then labeled **Action for Rob** numbered steps (one per line; pasteable commands in their own fence) or `No action for you.`; end with the decision owed. Never use valid shell syntax as edit placeholders (`$TOKEN`); use `PASTE_…_HERE` or paste-at-prompt. Template `templates/owner-update.md`; PROCESS §9, AGENTS, OWNER-GUIDE.
 
 

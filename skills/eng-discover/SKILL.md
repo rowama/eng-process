@@ -21,6 +21,7 @@ Session: standard Start/Finish per `.eng/PROCESS.md` section 8 (kit: `PROCESS.md
 3a. **Acceptance examples (medium/large, v2.5):** for each REQ write 1-3 concrete Given/When/Then examples in the problem domain's words (what, not how: no URLs, buttons, status codes) under "Acceptance examples". Rob approves them with the design at CP-A; they become the executable specs locked at CP-C (PROCESS.md 13). Small: "n/a - small".
 4. Mark every ambiguity `[NEEDS CLARIFICATION: question]`; resolve each with Rob. Do not guess.
 5. One artifact: the design doc. Don't pre-draft architecture or plans. If Rob asks for one anyway, give it `status: input` and a heading note "input, not approved".
+5a. **Risk you uncovered (L-008):** if a requirement or alternative exists mainly to mitigate a risk **you** found, do not fold it in as ordinary scope. Cost the friction/ops, offer a narrower alternative, and stop with **Decision needed** (`.eng/templates/owner-update.md`) before the design absorbs it.
 6. Don't name the implementer in the design doc; it is a PROJECT_STATE working agreement.
 7. Questions for later checkpoints (e.g. auth, hosting for CP-B) may be added to `pending_approvals` now.
 

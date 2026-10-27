@@ -27,6 +27,7 @@ Updates that need you use a fixed shape so your actions are easy to spot:
 3. The decision they need from you, when any (approve / defer / needs fixes / hold / a named checkpoint).
 
 They should never bury your todos inside a mixed status/findings paragraph.
+If they uncovered a risk and want to mitigate it in the design, they must cost the friction and ask you before baking it in (absorb / accept risk / defer / narrower) — not treat a soft yes as approval of that cost.
 
 ## When something looks wrong
 Say "back up to discover" (or to any phase). That's normal, not a failure. The agent revises the documents and writes down why.

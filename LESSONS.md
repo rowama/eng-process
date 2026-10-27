@@ -58,3 +58,10 @@ approved are listed here; eng-retro proposes them in the retro's "Kit lessons pr
 - Approved by Rob: 2026-10-27
 - Evidence: anonymised project, 2026-10-27, owner could not sort action items out of mixed status/review paragraphs; confirmed the labeled Action-for-Rob numbered-list shape works for multi-step work. Same day: Action-for-Rob sample used `$TOKEN`-style placeholder; shell expanded it on paste — prefer `PASTE_BOT_TOKEN_HERE` or paste-at-prompt.
 
+### L-008: When the agent uncovers a risk and would mitigate it in design, architecture, or plan, stop with an explicit Decision needed that names the risk, the friction/ops cost, and a narrower alternative, because baking mitigation in as ordinary scope hides a cost the owner did not choose.
+- Origin: anonymised project, 2026-10-27
+- Confirmations: 1
+- Status: hypothesis
+- Approved by Rob: 2026-10-27
+- Evidence: anonymised project, 2026-10-27, blast-radius mitigation landed in architecture without a clear cost ask; owner later rejected the friction (extra step per bot per channel).
+
