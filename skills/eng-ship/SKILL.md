@@ -19,7 +19,7 @@ Session: standard Start/Finish per `.eng/PROCESS.md` section 8 (kit: `PROCESS.md
 2a. (v2.5) Acceptance suite green on every planned channel; `python3 .eng/bin/eng-spec status .` clean or re-approved by Rob.
 3. Finalize the CHANGELOG entry (user-facing summary first; `.eng/bin/eng-check` rejects `<...>` placeholders and empty bullets); bump VERSION per project convention.
 4. Docs audit: README/AGENTS.md/API docs match changed behavior.
-5. Push (per `push_permission`; default ask Rob first) and open a PR linking the plan, verification report, review findings and ADRs. Wait for CI; fix only by root cause.
+5. Push (per `push_permission`; default ask Rob first). With `standing`, after eng-verify PASS you may push `main` without asking; still ask for tags and force-push. Open a PR when the project uses PRs (trunk+tag: CP-P may name the tag/commit — LESSONS L-002). Link the plan, verification report, review findings and ADRs. Wait for CI; fix only by root cause.
 6. Never merge or deploy yourself unless Rob explicitly asked for that specific action.
 7. **Notes rotation:** if `thoughts/shared/review-notes/<owner>-review-notes.md` has notes beyond the template header, `git mv` it to `<cycle-id>-<owner>-review-notes.md` (cycle id = release version or plan id) and recreate the empty scratch file from `.eng/templates/review-notes.md`.
 

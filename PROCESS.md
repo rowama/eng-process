@@ -87,7 +87,7 @@ Discovering that an earlier artifact is wrong is normal. Any agent or the owner 
 - Deferrals and unrelated discoveries go to `TODOS.md`, not into the current slice.
 
 ## 6. Definition of Done
-`docs/definition-of-done.md` (project may extend, never weaken). Core: criteria re-executed in the verifying session; tests incl. regression; no weakened gates; docs, CHANGELOG, ADRs, TODOS updated; verification PASS; state + handoff written.
+`docs/definition-of-done.md` (project may extend, never weaken). Core: criteria re-executed in the verifying session; tests incl. regression; no weakened gates; docs, CHANGELOG, ADRs, TODOS updated; verification PASS; state + handoff written. Also in the DoD template: default `pytest tests` (or project equivalent) with zero silent collection skips; time/rate tests use an injected/frozen clock from slice 1 (LESSONS L-003).
 
 ## 7. Context hygiene
 - **One phase per session.** Start fresh; load only PROJECT_STATE, the latest handoff, and the inputs the skill names.
@@ -114,7 +114,7 @@ Recommend; Rob decides. Never weaken a gate or use `--no-verify`. A report is a 
 | `implementer` | `claude-code` | Who writes code: Claude Code on the owner's own PC. Never name it in design docs; reference this field. |
 | `planner` | `grok-bot` | Grok Bot assistants plan, write docs, keep state and process. They don't write production code. |
 | `cross_review` | `codex-advisory` | Independent cross-model review; advisory, never a gate. `none` disables. |
-| `push_permission` | `ask` | `ask` = ask the owner before each push; `standing` = may push the slice branch without asking (never merge). |
+| `push_permission` | `ask` | `ask` = ask the owner before each push; `standing` = after eng-verify PASS, may push to `main` without asking; tags and force-push still ask; never merge without the owner. |
 | `board` | `none` | Optional Kanban (e.g. self-hosted Vikunja, deferred). If used: board only, one card per slice linking to the repo plan/slice card. The repo stays the single source of truth; never record decisions on the board. |
 
 **Implementer hand-off loop.**

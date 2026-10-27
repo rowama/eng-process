@@ -1,5 +1,12 @@
 # Changelog (eng-process kit)
 
+## Unreleased
+### Changed (process)
+- `push_permission: standing` means after eng-verify PASS, pushes to `main` may proceed without asking; tags and force-push still ask (PROCESS section 10, PROJECT_STATE / AGENTS / eng-ship).
+- Definition of Done template requires default test collection with zero silent skips, and injected/frozen clocks for time/rate tests from slice 1 (LESSONS L-003).
+### Added
+- AGENTS.md template **Runtime facts** section pattern (port, runtime pin, restart MCP client after tool-list deploys). Project values stay project-local; do not restate bypassPermissions.
+
 ## 2.5.6 - 2026-10-26
 ### Added
 - Owner incoming-thoughts inbox `thoughts/shared/inbox.md` (template `templates/inbox.md`, `## Open` / `## Deferred`). Capture prefixes `note:` `n:` `idea:` `feature:` `future feature:` `ff:` `capture:` `cap:` mean append only. "process incoming" / "check idea log" / "process notes" walks each item with the owner (classify, clarify, move/act, or defer), then archives to `thoughts/shared/inbox/YYYY-MM-DD-HHMM-inbox.md` with per-item status and restarts the live inbox with deferred items (deferral date).
