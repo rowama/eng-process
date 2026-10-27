@@ -36,3 +36,10 @@ approved are listed here; eng-retro proposes them in the retro's "Kit lessons pr
 - Status: hypothesis
 - Approved by Rob: 2026-10-26
 - Evidence: anonymised project / kit, 2026-10-26, docs-only process commits sat waiting for push OK after the change was already approved.
+
+### L-005: When a mandatory plan review is due, the planner starts eng-run plan-review on the owner's PC without asking, because handing the owner the command blocks the loop for a non-decision.
+- Origin: anonymised project, 2026-10-27
+- Confirmations: 1
+- Status: hypothesis
+- Approved by Rob: 2026-10-27
+- Evidence: anonymised project, 2026-10-27, planner offered paste/widget instead of starting plan-review; owner expected it to run automatically.

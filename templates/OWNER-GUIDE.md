@@ -18,7 +18,7 @@ You are the only approver. Agents propose; you decide. Everything official is wr
 3. Approve or reject in chat. The agent records it in the Approval log, the document's status, and an ADR if the decision is durable, then commits.
 4. When a slice is ready, the planner sends you a short "ready to implement" message with a line to paste into your coding agent.
 5. After coding, an independent review (Codex) may add findings. They are advice. You decide at the slice and Done checkpoints. Reviews are always saved as files in `thoughts/shared/verification/`.
-6. To have an agent run one step for you: `python3 .eng/bin/eng-run code-review <slice-id>` (or `plan-review <plan>`, `implement <plan> <slice-id>`). Add `--dry-run` to see the command first. A bot (Chet, Dave) may run this on your PC only after you say yes.
+6. Headless steps on your PC: `python3 .eng/bin/eng-run plan-review <plan>`, `implement <plan> <slice-id>`, `code-review <slice-id>`. Add `--dry-run` to preview. The planner starts plan-review (after the plan is drafted), implement (after CP-C), and code-review (when the slice is ready to verify) by default and tells you as FYI — you are not the default runner. Say yes only for ad-hoc runs outside those paths, or if you want to drive one yourself.
 
 ## When something looks wrong
 Say "back up to discover" (or to any phase). That's normal, not a failure. The agent revises the documents and writes down why.

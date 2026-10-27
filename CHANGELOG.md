@@ -4,10 +4,12 @@
 ### Changed (process)
 - `push_permission: standing` means after eng-verify PASS, pushes to `main` may proceed without asking; tags and force-push still ask (PROCESS section 10, PROJECT_STATE / AGENTS / eng-ship).
 - **Docs-only commits always push to `main` without asking** (under both `ask` and `standing`); tags and force-push still ask (PROCESS section 10, LESSONS L-004).
+- Planner **starts** mandatory `eng-run plan-review` after the plan is drafted (FYI only; not a Rob paste default). Same autonomy for implement after CP-C and code-review when verifying. eng-status labels the eng-run line as planner-starts; codex exec is fallback (PROCESS section 10, eng-plan, OWNER-GUIDE, LESSONS L-005).
 - Definition of Done template requires default test collection with zero silent skips, and injected/frozen clocks for time/rate tests from slice 1 (LESSONS L-003).
 ### Added
 - AGENTS.md template **Runtime facts** section pattern (port, runtime pin, restart MCP client after tool-list deploys). Project values stay project-local; do not restate bypassPermissions.
 - LESSONS L-004 (hypothesis): docs-only commits push without asking.
+- LESSONS L-005 (hypothesis): planner starts plan-review without asking.
 
 ## 2.5.6 - 2026-10-26
 ### Added
