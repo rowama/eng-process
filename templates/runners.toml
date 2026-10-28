@@ -1,6 +1,12 @@
 # eng-run runner configuration (project-owned; eng-init creates it once and never overwrites it).
 # Role -> runner. Env override per role: ENG_RUNNER_PLAN_REVIEW, ENG_RUNNER_IMPLEMENT, ENG_RUNNER_CODE_REVIEW.
 # Built-in runners: claude, codex. Add any other tool as a [runners.<name>] table with type = "command".
+# PATH: eng-run finds runners with the PATH of the process that starts it (bot shell, routine, hook), which is
+# often non-interactive. npm installs under nvm (codex, claude) live in "$NVM_DIR/versions/node/<version>/bin",
+# which nvm only adds to PATH in interactive shells, so eng-run then exits 127 "not found on PATH". Fix it in
+# that environment (e.g. export PATH="$HOME/.nvm/versions/node/<version>/bin:$PATH" in the launching script, or
+# `nvm alias default <version>` + source nvm.sh), not in this file. An absolute `executable = "..."` in
+# [runners.codex] also works only if `node` is on PATH too (the npm shim starts with #!/usr/bin/env node).
 [roles]
 implement = "claude"
 plan-review = "codex"

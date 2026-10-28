@@ -35,6 +35,9 @@ BUILTIN = ("claude", "codex")
 ROLE_PHASE = {"plan-review": "plan", "implement": "implement", "code-review": "verify"}
 CLAUDE_REVIEW_TOOLS = "Read,Grep,Glob,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git status:*)"
 SEV_RE = re.compile(r"^\s*(?:[-*]\s*)?(\d+)[.)]\s*\**\[?\s*(critical|high|medium|low)\s*\]?\**\s*[-:]?\s*(.*)$", re.I)
+# Codex-style priority tags: "- [P1] Title - file:line" (optionally numbered). P0..P3 map onto the kit severities.
+PRI_RE = re.compile(r"^\s*(?:[-*]\s*)?(?:(\d+)[.)]\s*)?\**\[\s*(P[0-3])\s*\]\**\s*[-:]?\s*(.*)$", re.I)
+PRI_SEV = {"p0": "critical", "p1": "high", "p2": "medium", "p3": "low"}
 
 
 def die(msg, code=2):
@@ -348,8 +351,10 @@ if a.dry_run:
     sys.exit(0)
 
 if not found:
-    die("runner '%s': executable '%s' not found on PATH (install it, or set another runner in .eng/runners.toml / %s)"
-        % (rname, exe_name, env_key), 127)
+    die("runner '%s': executable '%s' not found on PATH (install it, or set another runner in .eng/runners.toml / %s). "
+        "If it was installed with npm under nvm, nvm's bin dir is only on PATH in interactive shells: put "
+        "\"$NVM_DIR/versions/node/<version>/bin\" on PATH in the environment that launches eng-run "
+        "(see the PATH note in .eng/runners.toml)" % (rname, exe_name, env_key), 127)
 
 if not hook_cmd:
     sys.stderr.write("eng-run: WARNING: " + NO_HOOK_WARN + "\n")
@@ -406,12 +411,22 @@ rows, verdict = [], ""
 if a.role != "implement":
     for line in result.splitlines():
         m = SEV_RE.match(line)
-        if m:
-            text = m.group(3).replace("|", "/").strip()
+        p = None if m else PRI_RE.match(line)
+        if m or p:
+            g = m or p
+            text = g.group(3).replace("|", "/").strip()
             loc, _, fnd = text.partition(" - ")
             if not fnd:
                 loc, fnd = "-", text
-            rows.append((m.group(1), m.group(2).lower(), loc.strip("`* ") or "-", fnd.strip()))
+            if m:
+                rows.append((m.group(1), m.group(2).lower(), loc.strip("`* ") or "-", fnd.strip()))
+            else:   # keep the reviewer's own tag visible in the Finding text
+                # Codex prints "[P1] Title - path:lines" (title first, location last); swap when the tail is a path
+                tm = re.match(r"^(.*\S)\s+(?:-|\u2014|\u2013)\s+`?([^\s`]+:\d[\d,-]*)`?\s*$", text)
+                if tm:
+                    loc, fnd = tm.group(2), tm.group(1)
+                rows.append((p.group(1) or str(len(rows) + 1), PRI_SEV[p.group(2).lower()], loc.strip("`* ") or "-",
+                             "[%s] %s" % (p.group(2).upper(), fnd.strip())))
     if rows:
         cnt = {}
         for r in rows:
@@ -420,7 +435,7 @@ if a.role != "implement":
     elif re.search(r"\bno findings\b", result, re.I):
         verdict = "No findings."
     else:
-        verdict = "no numbered '[severity]' findings parsed; read the raw output and fill the Findings table by hand"
+        verdict = "no '[severity]' / '[P0-P3]' findings parsed; read the raw output and fill the Findings table by hand"
 
 summary = []
 summary.append("- role: %s; runner: %s (%s); exit code: %d; started %s" % (a.role, rname, rtype, rc, started.strftime("%Y-%m-%d %H:%M:%S")))

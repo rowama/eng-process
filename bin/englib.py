@@ -545,7 +545,8 @@ SPEC_DIR = ACC_DIR + "/specs"
 LOCK_FILE = ACC_DIR + "/spec-lock.json"
 ASSERT_PREFIXES = ("assert_", "then_", "expect_", "check_", "verify_")
 REQ_TAG = re.compile(r"""\bmark\.req\(\s*(['"])([^'"]+)\1""")
-REQ_ID = re.compile(r"\bREQ-\d+\b")
+REQ_ID = re.compile(r"\bREQ-[A-Za-z]*\d+[a-z]?\b")   # REQ-7, REQ-A1, REQ-A5b
+REQ_DEF = re.compile(r"^\s*(?:[-*]\s*)?(?:\[[ xX]\]\s*)?\**(REQ-[A-Za-z]*\d+[a-z]?)\**\s*:", re.M)
 WARN_ONLY_UNTIL.update({c: "2.6.0" for c in (
     "spec-changed-without-approval", "dsl-interface-changed", "dsl-assertion-changed",
     "slice-without-spec", "spec-unknown-node", "req-without-spec", "speclock-not-approved")})
@@ -678,8 +679,17 @@ def spec_req_tags(repo):
 
 
 def design_req_ids(body):
+    """REQ ids a design defines: list items 'REQ-n: ...' in its Requirements section. Mentions of other
+    REQs in the text (e.g. 'amends v1 REQ-7') are not definitions; if no item uses 'REQ-n:' form, every
+    REQ id in the section counts (older docs)."""
     sec = section(body, "Requirements (acceptance criteria)") or section(body, "Requirements") or ""
-    return sorted(set(REQ_ID.findall(sec)), key=lambda x: int(x.split("-")[1]))
+    ids = set(REQ_DEF.findall(sec)) or set(REQ_ID.findall(sec))
+    return sorted(ids, key=_req_key)
+
+
+def _req_key(q):
+    m = re.match(r"REQ-([A-Za-z]*)(\d+)([a-z]?)$", q)
+    return (m.group(1), int(m.group(2)), m.group(3)) if m else (q, 0, "")
 
 
 def spec_node_problem(repo, node):
