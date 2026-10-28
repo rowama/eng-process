@@ -30,5 +30,7 @@ Report complete with re-executed evidence, review summary and verdict.
 ## Approval stop (Rob)
 Per slice: **CP-S** `CP-S: <slice path> - manual verification`. Increment: **CP-D** `CP-D: <report path> - approve done` with the Manual Verification checklist.
 
+Before the CP-S (or CP-D) **Action for Rob** (LESSONS L-009): filter Manual verification to steps that are runnable against the deployed/runtime-now path. For each step, record `ready: <predicate you verified>` (entrypoint started, env present, dependency live) or move it under **Blocked / deferred** with `blocked: <why> → unblocks in <slice>`. Never paste the plan's full Demo script or later-slice criteria as the current Action for Rob. Default L-007 clarity: exact commands, success look, jargon explained once.
+
 ## Finish
 Standard: end with eng-handoff.

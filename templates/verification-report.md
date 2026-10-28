@@ -32,7 +32,8 @@ Spec lock: <`eng-spec status` output: clean | changes + Rob's re-approval row>
 - Findings file: <path or skipped: reason>
 
 ## Manual verification required (for Rob)
-- [ ] <step>
+<!-- L-009: only runnable-now steps as Action for Rob. Each line ends with ready: <predicate> or blocked: <why> → <slice>. Demo script is aspirational; do not paste the full plan demo here as current. -->
+- [ ] <step> — ready: <how verified live> | blocked: <why> → <slice>
 
 ## Definition of Done
 <each item from docs/definition-of-done.md: pass / fail / n.a.>

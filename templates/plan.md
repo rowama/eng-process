@@ -40,7 +40,7 @@ Slice card: <thoughts/shared/slices/...md>
 #### Automated Verification
 - [ ] <exact command>, e.g. `make test` passes
 #### Manual Verification
-- [ ] <what Rob checks by hand>
+- [ ] <what Rob checks by hand> — ready when <predicate> | blocked until <slice> (L-009)
 
 **Stop:** after automated checks pass, pause for Rob's manual verification before Phase 2.
 
@@ -50,7 +50,9 @@ Slice card: <thoughts/shared/slices/...md>
 (same structure)
 
 ## Demo script
-<!-- 3-6 steps Rob can follow to see the result working (commands, URLs, clicks, expected output). Short. -->
+<!-- 3-6 steps Rob can follow to see the end-state result (commands, URLs, clicks, expected output). Short.
+     Aspirational: the full script may need later slices. CP-S Action for Rob uses only the currently-runnable
+     subset (LESSONS L-009); mark Manual Verification steps ready: or blocked: → <slice>. -->
 1. 
 
 ## Testing Strategy

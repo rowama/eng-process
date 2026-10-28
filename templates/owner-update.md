@@ -1,4 +1,4 @@
-<!-- Standard owner-facing update shape (LESSONS L-007). Every project bot uses this when messaging Rob. -->
+<!-- Standard owner-facing update shape (LESSONS L-007, L-009). Every project bot uses this when messaging Rob. -->
 # Owner update shape
 
 Use this shape every time you write Rob an update that might need him.
@@ -32,6 +32,16 @@ Use this shape every time you write Rob an update that might need him.
 - If he has nothing to do, write exactly: `No action for you.`
 - Put the decision he owes (approve / defer / needs fixes / hold / named CP) after the actions, not mixed into status.
 
+
+## Manual / CP-S steps (LESSONS L-009)
+- Only ask the owner to run steps that work **against the runtime that is live now** (entrypoint started, required env present, dependency deployed).
+- Each Action-for-Rob manual step must state readiness in one short clause (`ready: <how you verified>`) or be listed as blocked: `Blocked: <why>; unblocks in <slice or phase>` — never as a current step.
+- Never paste the plan's full Demo script or later-slice criteria as today's Action for Rob. The demo script is aspirational end-state; CP-S uses the currently-runnable subset only.
+
+## Default detail (LESSONS L-007 clarity)
+- Default to detailed, pasteable instructions. Name the exact command or click path.
+- After each command, one line on what success looks like.
+- The first time you use project jargon or a project CLI, say what it does versus the adjacent product/system (e.g. what `set-bot` does vs the chat product). Do not wait for the owner to ask for clarity.
 ## Risk you uncovered (mitigation cost)
 
 When **you** uncovered a risk and your design, architecture, or plan would mitigate it, do not bake the mitigation in as a normal feature. Before it lands:

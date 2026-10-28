@@ -1,6 +1,9 @@
 # Changelog (eng-process kit)
 
 ## Unreleased
+### Added
+- LESSONS L-009: CP-S / owner manual checks list only runnable-now steps, each with a readiness predicate (or blocked + why + unblock slice); never paste the plan demo script as the current Action for Rob. eng-verify Approval stop, `templates/verification-report.md`, `templates/plan.md` Demo/Manual notes, `templates/owner-update.md`, PROCESS §9, AGENTS, OWNER-GUIDE.
+- L-007 clarity addendum: Action-for-Rob defaults to detailed pasteable steps that explain jargon / adjacent systems without waiting for the owner to ask.
 
 ## 2.5.9 - 2026-10-27
 ### Fixed
