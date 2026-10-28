@@ -5,7 +5,7 @@ expect 0 "codex [P1]/[P2] findings are parsed (not 'No findings.')" bash -c "cp 
 - [P3] plan wording - tighten Phase 2
 4. [low] typo - README.md:1
 No findings beyond these.' python3 .eng/bin/eng-run code-review --base main --allow-self-review >/dev/null && V=\$(ls thoughts/shared/verification/*-base-main-review.md) && grep -q '^| 1 | high | src/wake.py:12-20 | \\[P1\\] Stale id approves old wakes | open |' \$V && grep -q '^| 2 | medium | src/retry.py:5 | \\[P2\\] Missing retry cap | open |' \$V && grep -q '^| 3 | low | plan wording | \\[P3\\] tighten Phase 2 | open |' \$V && grep -q '^| 4 | low | typo | README.md:1 | open |' \$V && ! grep -qx 'No findings.' \$V"
-expect 0 "missing runner: exit 127 and error mentions nvm PATH; runners.toml documents it" bash -c "cd '$RN' && out=\$(PATH=/usr/bin:/bin python3 .eng/bin/eng-run plan-review $PL --runner codex 2>&1); rc=\$?; [ \$rc = 127 ] && echo \"\$out\" | grep -q 'nvm' && grep -q 'NVM_DIR' '$KIT/templates/runners.toml'"
+expect 0 "missing runner: exit 127 and error mentions nvm PATH; runners.toml documents it" bash -c "cd '$RN' && out=\$(HOME=/nonexistent NVM_DIR= PATH=/usr/bin:/bin python3 .eng/bin/eng-run plan-review $PL --runner codex 2>&1); rc=\$?; [ \$rc = 127 ] && echo \"\$out\" | grep -q 'nvm' && grep -q 'NVM_DIR' '$KIT/templates/runners.toml'"
 expect 0 "design_req_ids: letter ids, definitions only, natural sort" python3 -c "
 import sys; sys.path.insert(0,'$KIT/bin'); import englib as L
 b='## Requirements (acceptance criteria)\n- [ ] REQ-A1: x (amended)\n- [ ] REQ-A10: y\n- [ ] REQ-A5b: z, amends v1 REQ-7\n- [ ] REQ-A2: w\n\n## Amendments\n- REQ-A1 changed\n'
