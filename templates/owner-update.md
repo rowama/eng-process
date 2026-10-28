@@ -42,6 +42,14 @@ Use this shape every time you write Rob an update that might need him.
 - Default to detailed, pasteable instructions. Name the exact command or click path.
 - After each command, one line on what success looks like.
 - The first time you use project jargon or a project CLI, say what it does versus the adjacent product/system (e.g. what `set-bot` does vs the chat product). Do not wait for the owner to ask for clarity.
+- The first time the owner must **do or understand** something new — a concept, feature config, setup step, admin step, env var, mount, scale setting, flag, secret, or similar — explain it with no assumed platform knowledge: **where it lives** (which product, UI path, file, or CLI — e.g. Coolify → this service → Environment, not the Dockerfile), **what it does**, and the **exact value or action** (or `PASTE_…_HERE`). Do not assume he already knows that product or path.
+- Wrong: “attach `/data`, set `MMB_STORE_KEY`, replicas, `LIVE_BOTS_ENABLED`.”
+- Right (illustrative — same shape for any new setup/admin step):
+  1. In Coolify → this service → Environment (**not** the Dockerfile): set `MMB_STORE_KEY=PASTE_STORE_KEY_HERE` — encrypts the store.
+  2. In Coolify → this service → Persistent storage: mount host `/data` → container `/data`.
+  3. In Coolify → this service → Scaling: set replicas to `1` (Coolify UI scaling, not a Dockerfile change).
+  4. In Coolify → this service → Environment: set `LIVE_BOTS_ENABLED=true` — turns on live bot listeners.
+
 ## Risk you uncovered (mitigation cost)
 
 When **you** uncovered a risk and your design, architecture, or plan would mitigate it, do not bake the mitigation in as a normal feature. Before it lands:
