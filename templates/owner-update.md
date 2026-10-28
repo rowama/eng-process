@@ -50,6 +50,9 @@ Use this shape every time you write Rob an update that might need him.
   3. In Coolify → this service → Scaling: set replicas to `1` (Coolify UI scaling, not a Dockerfile change).
   4. In Coolify → this service → Environment: set `LIVE_BOTS_ENABLED=true` — turns on live bot listeners.
 
+## Default reversal (LESSONS L-010)
+- When a change reverses a user-visible default the owner relies on, put a one-line **Before → After** example in the approval ask (e.g. `Before: X happens by default → After: X only when you opt in`) and demo it at CP-S. Rule-style prose alone gets approved without the reversal being noticed.
+
 ## Risk you uncovered (mitigation cost)
 
 When **you** uncovered a risk and your design, architecture, or plan would mitigate it, do not bake the mitigation in as a normal feature. Before it lands:

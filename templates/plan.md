@@ -28,6 +28,9 @@ plan_review: none        # medium/large: path to the mandatory Codex plan review
 ## Implementation Approach
 <strategy; program design: key types/signatures, call path, file-tree diff>
 
+<!-- Multi-component live feature (LESSONS L-013): slice so a thin end-to-end live path exists early (walking skeleton),
+     not component-only slices; earlier CP-S still lists only runnable-now steps (L-009). -->
+
 ## Phase 1: <vertical slice name — thin, end-to-end, demoable>
 Slice card: <thoughts/shared/slices/...md>
 

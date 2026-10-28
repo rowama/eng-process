@@ -39,6 +39,8 @@ The values live in `PROJECT_STATE.md` front matter (`implementer`, `planner`, `c
 ## Rules
 - Never weaken a test, timeout, or check to make it pass; never use `--no-verify`.
 - Durable decisions go in `docs/decisions/` (ADR). Deferred work goes in `TODOS.md`.
+- Multi-agent: when two or more agents work this project at once, one agent owns writes to PROJECT_STATE.md and TODOS.md; others append via handoff or inbox (kit LESSONS L-012).
+- Review-runner sandbox that cannot bind loopback = partial test coverage; never count it for socket/integration tests — re-run those outside it (kit LESSONS L-011).
 - Don't touch: <paths / systems off-limits>
 
 

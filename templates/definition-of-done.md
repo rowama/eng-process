@@ -16,7 +16,8 @@ A slice/increment is Done only when every applicable item holds, proven by comma
 - [ ] No test, timeout, lint rule, or check was weakened, skipped, or suppressed without Rob's named approval.
 - [ ] Build, lint/typecheck, and the full test suite pass.
 - [ ] Default test command (`pytest tests` or the project equivalent) collects and runs unit + acceptance with zero silent collection skips (no quietly skipped modules).
-- [ ] Time- or rate-based behaviour uses an injected/frozen clock in tests from slice 1 (kit LESSONS L-003).
+- [ ] Time-, rate-, or concurrency-based behaviour uses an injected/frozen clock in tests from slice 1, with no sleep-based waits on threads or async tasks (use events, injected clocks, or polling with a deadline) (kit LESSONS L-003).
+- [ ] If the change reverses a user-visible default, the CP approval ask carried a one-line Before → After example and it was demoed at CP-S (kit LESSONS L-010).
 - [ ] Executable specs (medium/large, when acceptance is enabled): every REQ in the approved design has a spec
       (`eng-spec trace`), all specs pass on every planned channel, and locked specs / the DSL interface were not
       changed without Rob's re-approval (`eng-spec status` clean; assertion-step changes covered by the code review).

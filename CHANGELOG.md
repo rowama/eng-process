@@ -2,6 +2,12 @@
 
 ## Unreleased
 ### Added
+- LESSONS L-010: when a change reverses a user-visible default the owner relied on, the approval ask carries a one-line Before → After example and CP-S demos it. `templates/owner-update.md`, PROCESS §9, `templates/definition-of-done.md`, eng-verify, OWNER-GUIDE.
+- LESSONS L-011: a code-review runner sandbox that cannot bind loopback gives partial test coverage only — never count it for socket/integration suites; the verifier re-runs them. AGENTS template, eng-verify.
+- LESSONS L-012: with two or more agents on one project, one agent owns writes to PROJECT_STATE and TODOS; others append via handoff or inbox. AGENTS template.
+- LESSONS L-013: multi-component live features expose a thin end-to-end live path early (walking skeleton) so CP-S has something live to approve. `templates/plan.md`.
+- L-003 extended to concurrency/timing waits: no sleep-based waits on threads/async tasks in tests (events, injected clocks, or deadline polling). `templates/definition-of-done.md`.
+- Same-project reconfirm evidence appended to L-004, L-006, L-008, L-009 (Confirmations unchanged).
 - LESSONS L-009: CP-S / owner manual checks list only runnable-now steps, each with a readiness predicate (or blocked + why + unblock slice); never paste the plan demo script as the current Action for Rob. eng-verify Approval stop, `templates/verification-report.md`, `templates/plan.md` Demo/Manual notes, `templates/owner-update.md`, PROCESS §9, AGENTS, OWNER-GUIDE.
 - L-007 clarity addendum: Action-for-Rob defaults to detailed pasteable steps that explain jargon / adjacent systems without waiting for the owner to ask.
 - L-007 first-mention addendum: first time the owner must do or understand anything new (concept, feature config, setup/admin step), explain where it lives, what it does, and the exact value/action — no assumed platform knowledge. owner-update examples; PROCESS §9, AGENTS, OWNER-GUIDE.
