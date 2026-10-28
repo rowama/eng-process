@@ -12,10 +12,14 @@
 - L-007 clarity addendum: Action-for-Rob defaults to detailed pasteable steps that explain jargon / adjacent systems without waiting for the owner to ask.
 - L-007 first-mention addendum: first time the owner must do or understand anything new (concept, feature config, setup/admin step), explain where it lives, what it does, and the exact value/action — no assumed platform knowledge. owner-update examples; PROCESS §9, AGENTS, OWNER-GUIDE.
 - Docs: runner PATH note for npm installs under nvm (non-interactive shells lack nvm's bin dir) in `templates/runners.toml`, OWNER-GUIDE and README; README documents the `[P0]`-`[P3]` review tag mapping.
+- `.eng/runners.toml` optional `[env]` (all runners) and `[runners.<name>.env]` (one runner) tables of `KEY = "value"`, applied to the runner subprocess; PATH values are prepended (runner, then `[env]`, then inherited; `~` expanded) and used to find the executable; other keys override (runner table wins). Template comment documents it; project `runners.toml` is not changed by upgrade.
+
+### Changed
+- `eng-run`: when a runner executable is not on PATH, it looks in `$NVM_DIR/versions/node/*/bin` and `~/.nvm/versions/node/*/bin`, prepends the bin dirs that contain it (newest version first) to PATH and retries; PATH is unchanged when the executable is found. Still missing => exit 127 with the nvm hint.
 
 ### Fixed
 - `eng-run` review parser now captures Codex-style `[P0]`-`[P3]` findings (unnumbered `- [P1] Title - path:line` too), mapped P0=critical, P1=high, P2=medium, P3=low with the tag kept in the Finding text; previously they were dropped and the review file said "No findings." Existing `N. [severity] loc - finding` lines unchanged.
-- `eng-run` "executable not found on PATH" error (exit 127) now explains the nvm PATH cause and fix. No PATH auto-detection.
+- `eng-run` "executable not found on PATH" error (exit 127) now explains the nvm PATH cause and fix (after the nvm auto-prepend below finds nothing).
 - `eng-spec trace` / `eng-check` req-without-spec: REQ ids with letters (`REQ-A1`, `REQ-A5b`) are recognised, so an amended and re-approved design's requirements no longer show as "(not in an approved design)"; only `REQ-x:` definition items count (a mention like "amends v1 REQ-7" is no longer claimed by the new design); natural sort.
 
 ## 2.5.9 - 2026-10-27

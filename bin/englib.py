@@ -535,6 +535,56 @@ def parse_toml_min(text):
     return data
 
 
+def runner_env(cfg, rname, base=None):
+    """Environment for runner `rname`: base (default os.environ) + runners.toml [env] + [runners.<rname>.env].
+    Values are strings. PATH is never replaced: each PATH value (os.pathsep-separated, ~ expanded) is prepended,
+    so the result is runner PATH : [env] PATH : inherited PATH. Other keys override (runner table wins)."""
+    env = dict(os.environ if base is None else base)
+    layers = [(cfg or {}).get("env") or {}, (((cfg or {}).get("runners") or {}).get(rname) or {}).get("env") or {}]
+    for layer in layers:
+        if not isinstance(layer, dict):
+            raise ValueError("env must be a table of key = \"value\"")
+        for k, v in layer.items():
+            if isinstance(v, dict):
+                raise ValueError("env.%s: nested tables are not allowed" % k)
+            v = str(v).lower() if isinstance(v, bool) else str(v)
+            if k == "PATH":
+                v = os.pathsep.join(os.path.expanduser(x) for x in v.split(os.pathsep) if x)
+                old = env.get("PATH", "")
+                env["PATH"] = v + (os.pathsep + old if old and v else old)
+            else:
+                env[k] = v
+    return env
+
+
+def _ver_key(name):
+    return tuple(int(x) for x in re.findall(r"\d+", name))
+
+
+def nvm_bin_dirs(exe, environ=None):
+    """nvm node bin dirs that contain `exe`, newest version first: $NVM_DIR/versions/node/*/bin, then
+    ~/.nvm/versions/node/*/bin (deduplicated). Used by eng-run only when `exe` is not on PATH."""
+    import shutil
+    environ = os.environ if environ is None else environ
+    roots = []
+    if environ.get("NVM_DIR"):
+        roots.append(os.path.join(environ["NVM_DIR"], "versions", "node"))
+    home = environ.get("HOME") or os.path.expanduser("~")
+    roots.append(os.path.join(home, ".nvm", "versions", "node"))
+    out, seen = [], set()
+    for r in roots:
+        if not os.path.isdir(r):
+            continue
+        for v in sorted(os.listdir(r), key=_ver_key, reverse=True):
+            d = os.path.join(r, v, "bin")
+            rp = os.path.realpath(d)
+            if rp in seen or not os.path.isdir(d):
+                continue
+            if shutil.which(exe, path=d):
+                seen.add(rp); out.append(d)
+    return out
+
+
 # ---------------------------------------------------------------- v2.5 executable specs
 # Layout (Farley four-layer model): tests/acceptance/specs/ (executable specs, locked at CP-C),
 # tests/acceptance/dsl.py or dsl/ (DSL: public interface locked; assertion-step bodies flagged),

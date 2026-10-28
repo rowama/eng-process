@@ -244,7 +244,20 @@ prompt = L.fill(pbody, **ctx).strip() + "\n"
 role_key = a.role.replace("-", "_") + "_args"
 extra = as_list(spec.get("args"))
 stdin_text, prompt_via = None, str(spec.get("prompt_via", "auto"))
-resolved = shutil.which(exe_name)   # full path (Windows: finds claude.cmd / codex.cmd npm shims)
+try:
+    run_env = L.runner_env(cfg, rname)   # os.environ + runners.toml [env] + [runners.<name>.env]; PATH prepended
+except ValueError as e:
+    die(".eng/runners.toml: %s" % e)
+resolved = shutil.which(exe_name, path=run_env.get("PATH"))   # full path (Windows: finds claude.cmd / codex.cmd npm shims)
+if resolved is None and not os.path.isabs(exe_name):
+    nvm_dirs = L.nvm_bin_dirs(exe_name, run_env)   # npm under nvm: bin dir missing from non-interactive PATH
+    if nvm_dirs:
+        add = os.pathsep.join(nvm_dirs)
+        os.environ["PATH"] = add + (os.pathsep + os.environ["PATH"] if os.environ.get("PATH") else "")
+        run_env["PATH"] = add + (os.pathsep + run_env["PATH"] if run_env.get("PATH") else "")
+        resolved = shutil.which(exe_name, path=run_env["PATH"])
+        if resolved:
+            print("eng-run: note: '%s' not on PATH; using nvm bin %s (prepended to PATH)" % (exe_name, nvm_dirs[0]), file=sys.stderr)
 found = resolved is not None
 exe = exe_name                      # shown name; replaced by `resolved` only when executing
 if prompt_via == "auto":
@@ -352,8 +365,8 @@ if a.dry_run:
 
 if not found:
     die("runner '%s': executable '%s' not found on PATH (install it, or set another runner in .eng/runners.toml / %s). "
-        "If it was installed with npm under nvm, nvm's bin dir is only on PATH in interactive shells: put "
-        "\"$NVM_DIR/versions/node/<version>/bin\" on PATH in the environment that launches eng-run "
+        "eng-run also looked in $NVM_DIR and ~/.nvm versions/node/*/bin. If it was installed with npm under nvm elsewhere, put "
+        "its bin dir on PATH in the environment that launches eng-run or in [env] PATH in .eng/runners.toml "
         "(see the PATH note in .eng/runners.toml)" % (rname, exe_name, env_key), 127)
 
 if not hook_cmd:
@@ -378,7 +391,7 @@ started = L.now()
 print("eng-run: %s via %s: %s" % (a.role, rname, shown(argv)), flush=True)
 chunks = []
 try:
-    proc = subprocess.Popen([resolved] + argv[1:], cwd=repo, stdin=subprocess.PIPE if stdin_text else subprocess.DEVNULL,
+    proc = subprocess.Popen([resolved] + argv[1:], cwd=repo, env=run_env, stdin=subprocess.PIPE if stdin_text else subprocess.DEVNULL,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     child_pid = proc.pid
     try:

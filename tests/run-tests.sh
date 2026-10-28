@@ -142,5 +142,6 @@ brk input-not-approved 'sed -i "s/^phase: discover/phase: implement/; s/^triage:
 . "$KIT/tests/v257-tests.sh"
 . "$KIT/tests/v258-tests.sh"
 . "$KIT/tests/fixes-20261028-tests.sh"
+. "$KIT/tests/nvm-path-env-tests.sh"
 
 n=$(grep -c "^PASS" "$LOG"); rm -rf "$T"; echo; [ $fails = 0 ] && echo "ALL TESTS PASSED ($n checks)" || { echo "$fails TEST(S) FAILED"; exit 1; }

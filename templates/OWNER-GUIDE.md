@@ -44,7 +44,7 @@ Say "back up to discover" (or to any phase). That's normal, not a failure. The a
 - **Push permission** (`push_permission` in PROJECT_STATE): `ask` (default) or `standing`. With standing, after eng-verify PASS agents may push to `main` without asking. **Docs-only commits always push without asking.** Tags and force-push still need you.
 
 ## Headless implement permissions
-If eng-run exits 127 "executable 'codex' not found on PATH" but `codex` works in your terminal, it was installed with npm under nvm: nvm puts its bin dir on PATH only in interactive shells. Put `$NVM_DIR/versions/node/<version>/bin` on PATH in whatever starts eng-run (see the PATH note at the top of `.eng/runners.toml`).
+If eng-run exits 127 "executable 'codex' not found on PATH" but `codex` works in your terminal, it was installed with npm under nvm: nvm puts its bin dir on PATH only in interactive shells. eng-run now checks `$NVM_DIR` and `~/.nvm` `versions/node/*/bin` itself; if it is installed elsewhere, add its bin dir as `PATH = "..."` under `[env]` in `.eng/runners.toml` (prepended to PATH; see the note at the top of that file) or on PATH in whatever starts eng-run.
 
 `eng run implement` runs Claude headless, so it needs a non-interactive permission mode. The kit default for implement is `--permission-mode bypassPermissions`; `acceptEdits` is not enough because it does not auto-approve eng-check or pytest. Reviews stay read-only. Override in `.eng/runners.toml` (`[runners.claude] implement_args`).
 
